@@ -190,4 +190,5 @@ Utilizado para emitir sons.
 **Quantidade: 1**
 
 ---
-By Lorenzo 
+
+**By** <a href="https://github.com/benibgw">Benício G. Wendt</a> and <a href="https://github.com/oLima33">Lorenzo F. Lima</a>
