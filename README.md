@@ -191,4 +191,4 @@ Utilizado para emitir sons.
 
 ---
 
-**By:** <a href="https://github.com/benibgw" style="color: #cba6f7; text-decoration: none;">Benício G. Wendt</a> and <a href="https://github.com/oLima33" style="color: #cba6f7; text-decoration: none;">Lorenzo F. Lima</a>
+**By:** <a href="https://github.com/benibgw">Benício G. Wendt</a> and <a href="https://github.com/oLima33">Lorenzo F. Lima</a>
