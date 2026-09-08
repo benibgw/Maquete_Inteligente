@@ -158,7 +158,7 @@ Utilizado para movimentar partes móveis pesadas.
 
 ---
 
-### 3. Sg90(ou semelhante) — Micro servo motor
+### 4. Sg90(ou semelhante) — Micro servo motor
 
 Utilizado para movimentar partes móveis leves.
 
@@ -170,7 +170,7 @@ Utilizado para movimentar partes móveis leves.
 
 ---
 
-### 4. Mini Cooler 5V
+### 5. Mini Cooler 5V
 
 **Exemplo:**
 - Exaustor na cozinha
@@ -180,7 +180,7 @@ Utilizado para movimentar partes móveis leves.
 
 ---
 
-### 5. Buzzer Ativo 5V
+### 6. Buzzer Ativo 5V
 
 Utilizado para emitir sons.
 
