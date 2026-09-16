@@ -1,9 +1,12 @@
 #include <Arduino.h>
+#include "Maquete/Maquete.hpp"
+
+MaqueteClass Maquete;
 
 void setup() {
-  // put your setup code here, to run once:
+  Maquete.Begin();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  Maquete.Update();
 }
