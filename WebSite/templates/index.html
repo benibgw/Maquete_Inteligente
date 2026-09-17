@@ -33,13 +33,13 @@
       <div class="rows">
         <div class="row"><span>Alarme</span><strong id="alarm-state">--</strong></div>
         <div class="row"><span>Disparo</span><strong id="alarm-triggered">--</strong></div>
-        <div class="row"><span>Sirene</span><strong id="buzzer-state">--</strong></div>
+        <div class="row"><span>Buzzer</span><strong id="buzzer-state">--</strong></div>
       </div>
       <div class="actions">
         <button id="alarm-arm">Armar</button>
         <button id="alarm-disarm" class="ghost">Desarmar</button>
-        <button id="buzzer-on">Sirene ON</button>
-        <button id="buzzer-off" class="ghost">Sirene OFF</button>
+        <button id="buzzer-on">Buzzer ON</button>
+        <button id="buzzer-off" class="ghost">Buzzer OFF</button>
       </div>
     </section>
 
@@ -136,6 +136,29 @@
       <div class="rooms" id="rooms-grid"></div>
     </section>
   </main>
+
+  <footer>
+    <div class="footer-block">
+      <span class="footer-label">Projeto:</span>
+      <strong>Maquete Inteligente</strong>
+      <span class="footer-sep">·</span>
+      <strong>Osguri Cap</strong>
+    </div>
+    <div class="footer-block">
+      <span class="footer-label">Participantes:</span>
+      <a href="https://github.com/benibgw" target="_blank" rel="noopener">Benício Gabriel Wendt</a>
+      <span class="footer-sep">·</span>
+      <a href="https://github.com/oLima33" target="_blank" rel="noopener">Loreno Fagundes Lima</a>
+    </div>
+    <div class="footer-block">
+      <span class="footer-label">Instituição:</span>
+      <strong>CTISM</strong>
+      <span class="footer-sep">·</span>
+      <strong>IoT</strong>
+      <span class="footer-sep">·</span>
+      <strong>424</strong>
+    </div>
+  </footer>
 
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>

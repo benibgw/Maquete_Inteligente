@@ -470,4 +470,60 @@ button.ghost:hover {
     padding: 14px;
     gap: 14px;
   }
+
+  footer {
+    padding: 16px;
+  }
+}
+
+footer {
+  border-top: 1px solid var(--card-border);
+  padding: 22px 24px 30px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 18px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.footer-block {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  background: rgba(17, 17, 27, 0.45);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+}
+
+.footer-label {
+  color: var(--off);
+  text-transform: uppercase;
+  font-size: 0.66rem;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+
+.footer-sep {
+  color: var(--off);
+  opacity: 0.7;
+}
+
+footer strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+footer a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+footer a:hover {
+  color: var(--accent-2);
+  text-decoration: underline;
 }
