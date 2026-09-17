@@ -1,4 +1,5 @@
 import json
+import os
 import time
 import serial
 import serial.tools.list_ports
@@ -11,17 +12,43 @@ MQTT_PORT = 1883
 MQTT_USERNAME = None
 MQTT_PASSWORD = None
 
+ARDUINO_PORT = os.getenv("ARDUINO_PORT")
+ARDUINO_VID = os.getenv("ARDUINO_VID")
+ARDUINO_PID = os.getenv("ARDUINO_PID")
+
+KNOWN_VID_PID = {
+    (0x2341, 0x0042),
+    (0x2341, 0x0043),
+    (0x2341, 0x0243),
+    (0x1A86, 0x7523),
+}
+
 
 def detect_arduino_port():
-    ports = serial.tools.list_ports.comports()
-    for port in ports:
+    if ARDUINO_PORT:
+        return ARDUINO_PORT
+
+    known = set(KNOWN_VID_PID)
+    try:
+        if ARDUINO_VID and ARDUINO_PID:
+            known.add((int(ARDUINO_VID, 16), int(ARDUINO_PID, 16)))
+    except ValueError:
+        pass
+
+    for port in serial.tools.list_ports.comports():
+        if port.vid is not None and port.pid is not None and (port.vid, port.pid) in known:
+            return port.device
+    for port in serial.tools.list_ports.comports():
         if "Arduino" in port.description or "USB" in port.description:
             return port.device
     return None
 
 
 def connect_mqtt():
-    client = mqtt.Client()
+    try:
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    except AttributeError:
+        client = mqtt.Client()
     if MQTT_USERNAME and MQTT_PASSWORD:
         client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
     while True:
@@ -51,6 +78,7 @@ def connect_serial():
 
 
 MQTT_ROOT_TOPIC = "maquete_inteligente"
+HEARTBEAT_TOPIC = f"{MQTT_ROOT_TOPIC}/status/online"
 
 
 def parse_boolean(value):
@@ -101,7 +129,7 @@ def main():
                 data = json.loads(line)
                 topic = next(iter(data))
                 message = parse_boolean(data[topic])
-                client.publish(topic, json.dumps(message))
+                client.publish(topic, json.dumps(message), retain=(topic != HEARTBEAT_TOPIC))
                 print(f"Publicado tópico={topic} mensagem={message}")
             except json.JSONDecodeError:
                 print(f"Ignorando linha inválida: {line}")

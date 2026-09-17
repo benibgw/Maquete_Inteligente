@@ -1,6 +1,15 @@
 const ROOT = "maquete_inteligente";
 const POLL_MS = 1000;
 
+const ICONS = {
+  sala: '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v5"/><path d="M2 12a2 2 0 0 0 2-2V9h16v1a2 2 0 0 0 2 2v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-4Z"/><path d="M6 17v1M18 17v1"/></svg>',
+  quarto: '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>',
+  banheiro: '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 5.2 6 10a6 6 0 0 1-12 0c0-4.8 6-10 6-10Z"/></svg>',
+  cozinha: '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20"/><path d="M20 12v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="m4 8 16-4"/><path d="m8.86 6.78-.45-1.81a2 2 0 0 1 1.45-2.43l1.94-.48a2 2 0 0 1 2.43 1.46l.45 1.8"/></svg>',
+  escritorio: '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="13" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>',
+  garagem: '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16.5V8a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v8.5"/><path d="M3 16.5V11l1.2-3.2A1 1 0 0 1 5.1 7h13.8a1 1 0 0 1 .9.8L21 11v5.5"/><circle cx="7" cy="16.5" r="1.8"/><circle cx="17" cy="16.5" r="1.8"/><path d="M8.8 16.5h6.4"/></svg>',
+};
+
 const ROOMS = [
   { key: "sala", label: "Sala" },
   { key: "quarto", label: "Quarto" },
@@ -30,30 +39,20 @@ function dhtText(temp, humi) {
   return `${temp.toFixed(1)} °C / ${humi.toFixed(0)} %`;
 }
 
+function clampPct(v) {
+  return Math.max(0, Math.min(100, typeof v === "number" ? v : 0));
+}
+
 function setText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
 }
 
-function setBool(id, v, on, off) {
+function setStatus(id, v, on, off, onClass = "state-on") {
   const el = document.getElementById(id);
   if (!el) return;
   el.textContent = v === true ? on : v === false ? off : "--";
-  el.className = v === true ? "state-on" : v === false ? "state-off" : "";
-}
-
-function setBoolAlert(id, v, on, off) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = v === true ? on : v === false ? off : "--";
-  el.className = v === true ? "state-alert" : v === false ? "state-off" : "";
-}
-
-function setBoolOpen(id, v) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = v === true ? "ABERTA" : v === false ? "FECHADA" : "--";
-  el.className = v === true ? "state-on" : v === false ? "state-off" : "";
+  el.className = "status " + (v === true ? onClass : v === false ? "state-off" : "state-na");
 }
 
 function setConnection(online) {
@@ -61,6 +60,12 @@ function setConnection(online) {
   if (!el) return;
   el.textContent = online ? "online" : "offline";
   el.className = "badge " + (online ? "online" : "offline");
+  document.body.classList.toggle("offline", !online);
+}
+
+function toggleCardAlert(id, active) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle("card-alert", active);
 }
 
 async function sendCommand(topicName, val) {
@@ -83,30 +88,56 @@ function buildRooms() {
     const card = document.createElement("div");
     card.className = "room";
 
+    const icon = document.createElement("div");
+    icon.className = "room-icon";
+    icon.innerHTML = ICONS[room.key];
+
     const name = document.createElement("div");
     name.className = "room-name";
     name.textContent = room.label;
 
-    const lux = document.createElement("div");
-    lux.className = "room-lux";
-    lux.textContent = "Luz: --";
+    const meterRow = document.createElement("div");
+    meterRow.className = "room-meter";
 
-    const button = document.createElement("button");
-    button.className = "led-off";
-    button.textContent = "--";
-    button.addEventListener("click", () => {
-      const path = `${room.key}/led`;
-      const ledState = value(`${path}/state`);
-      sendCommand(topic(`${path}/command`), !ledState);
+    const meter = document.createElement("div");
+    meter.className = "meter";
+
+    const fill = document.createElement("div");
+    fill.className = "meter-fill";
+    meter.appendChild(fill);
+
+    const text = document.createElement("span");
+    text.textContent = "Luz: --";
+
+    meterRow.appendChild(meter);
+    meterRow.appendChild(text);
+
+    const toggle = document.createElement("label");
+    toggle.className = "toggle";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.setAttribute("aria-label", `Luz da ${room.label}`);
+
+    const track = document.createElement("span");
+    track.className = "track";
+
+    toggle.appendChild(checkbox);
+    toggle.appendChild(track);
+
+    checkbox.addEventListener("change", () => {
+      sendCommand(topic(`${room.key}/led/command`), checkbox.checked);
     });
 
+    card.appendChild(icon);
     card.appendChild(name);
-    card.appendChild(lux);
-    card.appendChild(button);
+    card.appendChild(meterRow);
+    card.appendChild(toggle);
     grid.appendChild(card);
 
-    room.luxEl = lux;
-    room.buttonEl = button;
+    room.fillEl = fill;
+    room.textEl = text;
+    room.checkboxEl = checkbox;
   });
 }
 
@@ -115,18 +146,9 @@ function updateRooms() {
     const led = value(`${room.key}/led/state`);
     const lux = value(`${room.key}/ldr/luminosity`);
 
-    room.luxEl.textContent = "Luz: " + numberText(lux, 1, " %");
-
-    if (led === true) {
-      room.buttonEl.textContent = "Desligar";
-      room.buttonEl.className = "led-on";
-    } else if (led === false) {
-      room.buttonEl.textContent = "Ligar";
-      room.buttonEl.className = "led-off";
-    } else {
-      room.buttonEl.textContent = "--";
-      room.buttonEl.className = "led-off";
-    }
+    room.textEl.textContent = "Luz: " + numberText(lux, 1, " %");
+    room.fillEl.style.width = `${clampPct(lux)}%`;
+    room.checkboxEl.checked = led === true;
   });
 }
 
@@ -134,19 +156,31 @@ function render(data) {
   currentState = data.state || {};
   setConnection(Boolean(data.online));
 
-  setBool("alarm-state", value("principal/alarme/state"), "ARMADO", "DESARMADO");
-  setBoolAlert("alarm-triggered", value("principal/alarme/triggered"), "SIM", "NAO");
-  setBool("buzzer-state", value("principal/buzzer/state"), "LIGADA", "DESLIGADA");
+  setStatus("alarm-state", value("principal/alarme/state"), "ARMADO", "DESARMADO");
+  setStatus("alarm-triggered", value("principal/alarme/triggered"), "SIM", "NAO", "state-alert");
+  setStatus("buzzer-state", value("principal/buzzer/state"), "LIGADA", "DESLIGADA");
+  toggleCardAlert("card-security", value("principal/alarme/triggered") === true);
 
-  setText("smoke-pct", numberText(value("cozinha/fumaca/percentage"), 1, " %"));
-  setBoolAlert("smoke-state", value("cozinha/fumaca/state"), "SIM", "NAO");
-  setBool("exhaust-state", value("cozinha/exaustor/state"), "ON", "OFF");
+  const smoke = value("cozinha/fumaca/percentage");
+  setText("smoke-pct", numberText(smoke, 1, " %"));
+  const smokeBar = document.getElementById("smoke-bar");
+  if (smokeBar) {
+    smokeBar.style.width = `${clampPct(smoke)}%`;
+    smokeBar.className =
+      "meter-fill " +
+      (typeof smoke === "number" ? (smoke >= 60 ? "alert" : smoke >= 30 ? "warn" : "") : "");
+  }
+  setStatus("smoke-state", value("cozinha/fumaca/state"), "SIM", "NAO", "state-alert");
+  setStatus("exhaust-state", value("cozinha/exaustor/state"), "ON", "OFF");
+  const exhaustToggle = document.getElementById("exhaust-toggle");
+  if (exhaustToggle) exhaustToggle.checked = value("cozinha/exaustor/state") === true;
+  toggleCardAlert("card-kitchen", value("cozinha/fumaca/state") === true);
 
-  setBoolOpen("door-state", value("sala/porta/state"));
+  setStatus("door-state", value("sala/porta/state"), "ABERTA", "FECHADA");
   setText("door-angle", numberText(value("sala/porta/servo_angle"), 0, "°"));
-  setBoolOpen("gate-state", value("garagem/portao/state"));
+  setStatus("gate-state", value("garagem/portao/state"), "ABERTA", "FECHADA");
   setText("gate-position", numberText(value("garagem/portao/position"), 0, ""));
-  setBoolAlert("hall-state", value("garagem/hall/state"), "SIM", "NAO");
+  setStatus("hall-state", value("garagem/hall/state"), "SIM", "NAO", "state-alert");
 
   setText(
     "sala-dht",
@@ -157,9 +191,9 @@ function render(data) {
     dhtText(value("quarto/dht11/temperature"), value("quarto/dht11/humidity"))
   );
 
-  setBoolAlert("motion-sala", value("sala/movimento/state"), "SIM", "NAO");
-  setBoolAlert("motion-garagem", value("garagem/movimento/state"), "SIM", "NAO");
-  setBoolAlert("motion-patio", value("patio/movimento/state"), "SIM", "NAO");
+  setStatus("motion-sala", value("sala/movimento/state"), "SIM", "NAO", "state-alert");
+  setStatus("motion-garagem", value("garagem/movimento/state"), "SIM", "NAO", "state-alert");
+  setStatus("motion-patio", value("patio/movimento/state"), "SIM", "NAO", "state-alert");
 
   updateRooms();
 }
@@ -181,9 +215,8 @@ function bindControls() {
 
   const exhaust = document.getElementById("exhaust-toggle");
   if (exhaust) {
-    exhaust.addEventListener("click", () => {
-      const state = value("cozinha/exaustor/state");
-      sendCommand(topic("cozinha/exaustor/command"), !state);
+    exhaust.addEventListener("change", () => {
+      sendCommand(topic("cozinha/exaustor/command"), exhaust.checked);
     });
   }
 }

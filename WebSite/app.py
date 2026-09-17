@@ -16,6 +16,7 @@ WEB_HOST = "0.0.0.0"
 WEB_PORT = 5000
 
 app = Flask(__name__)
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 state_lock = threading.Lock()
 state = {}

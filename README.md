@@ -234,16 +234,21 @@ Utilizado para emitir sons.
 Correções e melhorias pendentes, priorizadas:
 
 ### Alta prioridade (funcionamento)
-- [ ] Corrigir bug do DHT11: quando a leitura inicial for inválida (NaN), o `PublishIfChanged` com tolerância nunca publica o primeiro valor válido (`Firmware/src/Maquete/Maquete.cpp:601-609`). Publicar quando `last` for NaN.
-- [ ] Adicionar `retain=True` nos publishes de `state` do Script (ou republicar estado completo periodicamente) para que o WebSite recupere os valores após reiniciar, em vez de mostrar `--`.
-- [ ] Resolver conflito de Timer5 no Mega: cooler usa `analogWrite(44)` (Timer5C) e a lib Servo ocupa o Timer5. Mover o cooler para outro timer (ex.: Timer3/4) ou `detach()` do servo quando ocioso.
+- [x] Corrigir bug do DHT11: quando a leitura inicial for inválida (NaN), o `PublishIfChanged` com tolerância nunca publica o primeiro valor válido (`Firmware/src/Maquete/Maquete.cpp:601-609`). Publicar quando `last` for NaN.
+- [x] Adicionar `retain=True` nos publishes de `state` do Script (ou republicar estado completo periodicamente) para que o WebSite recupere os valores após reiniciar, em vez de mostrar `--`.
+- [x] Resolver conflito de Timer5 no Mega: cooler usa `analogWrite(44)` (Timer5C) e a lib Servo ocupa o Timer5. Mover o cooler para outro timer (ex.: Timer3/4) ou `detach()` do servo quando ocioso.
 
 ### Média prioridade (confiabilidade/UX)
-- [ ] Corrigir ângulo inicial do servo (publica ~93° em vez de 0° no boot) — gravar `write(0)` no attach ou usar o membro `Angle`.
-- [ ] Tornar o `Stepper.step()` do Nema17 não-bloqueante (passo por frame) para não congelar o loop durante o portão.
+- [x] Corrigir ângulo inicial do servo (publica ~93° em vez de 0° no boot) — gravar `write(0)` no attach ou usar o membro `Angle`.
+- [x] Tornar o `Stepper.step()` do Nema17 não-bloqueante (passo por frame) para não congelar o loop durante o portão.
 - [ ] Verificar a polaridade física do MC38 (NO vs NC) — código assume `HIGH` = porta aberta.
 
 ### Operacional
-- [ ] Endurecer a detecção de porta serial no Script (`Script/main.py:15-20`) com filtro por VID/PID ao lidar com múltiplos dispositivos USB.
-- [ ] Migrar o Script para `paho-mqtt` `CallbackAPIVersion.VERSION2` (hoje usa V1, deprecation warning).
+- [x] Endurecer a detecção de porta serial no Script (`Script/main.py:15-20`) com filtro por VID/PID ao lidar com múltiplos dispositivos USB.
+- [x] Migrar o Script para `paho-mqtt` `CallbackAPIVersion.VERSION2` (hoje usa V1, deprecation warning).
 - [ ] Implementar broker real com autenticação (hoje usa `broker.mqtt.cool` público, só para testes).
+
+> **Notas das correções:**
+> - O cooler foi movido para o **pino 5** (Timer3). **Religar o fio do exaustor do pino 44 para o pino 5.**
+> - Polos do MC38: com a configuração padrão (NO + `INPUT_PULLUP`), `HIGH` = porta aberta. Se a física estiver invertida (NC), instanciar com `MC38Class(pin, false)` em `Maquete.cpp:65-66`.
+> - Porta serial configurável por env: `ARDUINO_PORT`, `ARDUINO_VID`, `ARDUINO_PID` (ex.: Mega 16U2 `2341:0043`, CH340 `1A86:7523`).

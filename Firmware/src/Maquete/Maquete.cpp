@@ -71,7 +71,7 @@ MaqueteClass::MaqueteClass()
       PatioMovimento(34),
       SalaDht(35),
       QuartoDht(36),
-      CozinhaExaustor(44),
+      CozinhaExaustor(5),
       SalaPortaServo(37),
       GaragemPortaoMotor(Nema17Steps, 38, 39, 40, 41),
       Display(),
@@ -176,6 +176,8 @@ void MaqueteClass::Update(){
     unsigned long now = millis();
 
     ProcessInbound();
+
+    GaragemPortaoMotor.Update();
 
     if (now - LastSensorRead >= SensorReadInterval){
         LastSensorRead = now;
@@ -428,11 +430,7 @@ void MaqueteClass::HandlePortaoCommand(bool value){
 }
 
 void MaqueteClass::SetPortaoPosition(int32_t target){
-    int32_t current = GaragemPortaoMotor.GetPosition();
-    int32_t delta = target - current;
-    if (delta != 0){
-        GaragemPortaoMotor.Step((int16_t)delta);
-    }
+    GaragemPortaoMotor.MoveTo(target);
 }
 
 void MaqueteClass::PublishDelta(){
@@ -603,7 +601,7 @@ void MaqueteClass::PublishIfChanged(const __FlashStringHelper* topic, float valu
     if (isnan(value)){
         return;
     }
-    if (fabsf(value - last) >= tolerance){
+    if (isnan(last) || fabsf(value - last) >= tolerance){
         last = value;
         PublishTopic(topic, value, 1);
     }

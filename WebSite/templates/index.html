@@ -4,17 +4,32 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Maquete Inteligente</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
   <header>
-    <h1>Maquete Inteligente</h1>
+    <div class="brand">
+      <svg class="brand-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 10.5 12 3l9 7.5"/>
+        <path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/>
+      </svg>
+      <h1>Maquete <span>Inteligente</span></h1>
+    </div>
     <span id="connection" class="badge offline">offline</span>
   </header>
 
   <main>
-    <section class="card">
-      <h2>Segurança</h2>
+    <section class="card span2" id="card-security">
+      <div class="card-head">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6l7-3Z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+        <h2>Segurança</h2>
+      </div>
       <div class="rows">
         <div class="row"><span>Alarme</span><strong id="alarm-state">--</strong></div>
         <div class="row"><span>Disparo</span><strong id="alarm-triggered">--</strong></div>
@@ -29,19 +44,29 @@
     </section>
 
     <section class="card">
-      <h2>Cozinha</h2>
-      <div class="rows">
-        <div class="row"><span>Fumaça</span><strong id="smoke-pct">--</strong></div>
-        <div class="row"><span>Alerta</span><strong id="smoke-state">--</strong></div>
-        <div class="row"><span>Exaustor</span><strong id="exhaust-state">--</strong></div>
+      <div class="card-head">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <h2>Presença</h2>
       </div>
-      <div class="actions">
-        <button id="exhaust-toggle">Alternar exaustor</button>
+      <div class="rows">
+        <div class="row"><span>Sala</span><strong id="motion-sala">--</strong></div>
+        <div class="row"><span>Garagem</span><strong id="motion-garagem">--</strong></div>
+        <div class="row"><span>Pátio</span><strong id="motion-patio">--</strong></div>
       </div>
     </section>
 
     <section class="card">
-      <h2>Acessos</h2>
+      <div class="card-head">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="7.5" cy="15.5" r="5.5"/>
+          <path d="m15.5 7.5 3 3L22 7l-3-3"/>
+          <path d="m21 2-3 3"/>
+        </svg>
+        <h2>Acessos</h2>
+      </div>
       <div class="rows">
         <div class="row"><span>Porta</span><strong id="door-state">--</strong></div>
         <div class="row"><span>Ângulo</span><strong id="door-angle">--</strong></div>
@@ -58,24 +83,56 @@
     </section>
 
     <section class="card">
-      <h2>Ambiente</h2>
+      <div class="card-head">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>
+        </svg>
+        <h2>Ambiente</h2>
+      </div>
       <div class="rows">
         <div class="row"><span>Sala</span><strong id="sala-dht">--</strong></div>
         <div class="row"><span>Quarto</span><strong id="quarto-dht">--</strong></div>
       </div>
     </section>
 
-    <section class="card">
-      <h2>Presença</h2>
+    <section class="card" id="card-kitchen">
+      <div class="card-head">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5Z"/>
+        </svg>
+        <h2>Cozinha</h2>
+      </div>
       <div class="rows">
-        <div class="row"><span>Sala</span><strong id="motion-sala">--</strong></div>
-        <div class="row"><span>Garagem</span><strong id="motion-garagem">--</strong></div>
-        <div class="row"><span>Pátio</span><strong id="motion-patio">--</strong></div>
+        <div class="row">
+          <span>Fumaça</span>
+          <div class="row-meter">
+            <div class="meter"><div id="smoke-bar" class="meter-fill"></div></div>
+            <strong id="smoke-pct" class="pct">--</strong>
+          </div>
+        </div>
+        <div class="row"><span>Alerta</span><strong id="smoke-state">--</strong></div>
+        <div class="row">
+          <span>Exaustor</span>
+          <div class="row-toggle">
+            <strong id="exhaust-state">--</strong>
+            <label class="toggle">
+              <input type="checkbox" id="exhaust-toggle" aria-label="Alternar exaustor">
+              <span class="track"></span>
+            </label>
+          </div>
+        </div>
       </div>
     </section>
 
     <section class="card wide">
-      <h2>Iluminação</h2>
+      <div class="card-head">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 18h6"/>
+          <path d="M10 21h4"/>
+          <path d="M12 3a6 6 0 0 0-4 10.5c.8.7 1 1.4 1 2.5h6c0-1.1.2-1.8 1-2.5A6 6 0 0 0 12 3Z"/>
+        </svg>
+        <h2>Iluminação</h2>
+      </div>
       <div class="rooms" id="rooms-grid"></div>
     </section>
   </main>

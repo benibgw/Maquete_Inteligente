@@ -4,6 +4,7 @@ ServosClass::ServosClass(uint8_t pin){
     Pin = pin;
     Angle = 0;
     Motor.attach(Pin);
+    Motor.write(Angle);
 }
 
 void ServosClass::SetAngle(uint8_t angle){
@@ -12,7 +13,7 @@ void ServosClass::SetAngle(uint8_t angle){
 }
 
 uint8_t ServosClass::GetAngle(){
-    return Motor.read();
+    return Angle;
 }
 
 void ServosClass::Stop(){
