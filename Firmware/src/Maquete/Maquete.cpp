@@ -89,7 +89,7 @@ MaqueteClass::MaqueteClass()
     SalaMovimentoState = false;
     GaragemMovimentoState = false;
     PatioMovimentoState = false;
-CozinhaExaustorState = false;
+    CozinhaExaustorState = false;
     AlarmState = false;
     AlarmTriggered = false;
     BuzzerState = false;
