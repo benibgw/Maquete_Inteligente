@@ -19,7 +19,7 @@ Funções autométicas também serão iniciadas como a leitura de sensores:
 - detecção de presença
 - magnéticos
 
-Todo o sistema de gerenciamento será por meio de um site que pode ser acessado pelo celular ou notebook, sendo construído com base em um Arduino UNO, programação em HTML, CSS, Python, C++ e JavaScript.
+Todo o sistema de gerenciamento será por meio de um site que pode ser acessado pelo celular ou notebook, sendo construído com base em um Arduino Mega 2560, programação em HTML, CSS, Python, C++ e JavaScript.
 
 ---
 
@@ -39,6 +39,40 @@ Utilizaremos outros tipos de matériais complementares para a contrução de mó
 - Vidro
 - Alumínio
 
+## Comunicação / Arquitetura
+
+O sistema é dividido em três módulos que se comunicam por um Broker MQTT:
+
+```
+Navegador (celular/notebook)
+        │ HTTP (poll /api/state, comando /api/command)
+        ▼
+WebSite (Flask + paho-mqtt)  ──────┐
+        ▲                        MQTT
+        │ tópicos /state          ▼
+Broker MQTT (broker.mqtt.cool)
+        ▲ MQTT tópicos /state     │
+        │                         ▼
+Script (Pyserial + paho-mqtt) ──────┘
+        ▲ Serial 9600 (JSON por linha)
+        ▼
+Firmware (Arduino Mega 2560, C++)
+```
+
+- **Firmware**: lê os sensores e aciona os atuadores, publicando o estado pela Serial em JSON (um tópico por linha) e recebendo comandos no mesmo canal.
+- **Script** (`Script/main.py`): ponte entre a Serial e o Broker MQTT — repassa comandos para o firmware e publica o estado no broker.
+- **WebSite** (`WebSite/app.py`): assina os tópicos do broker, mantém o estado atualizado e expõe uma interface web para monitoramento e controle.
+- **Broker MQTT**: usado somente para testes (`broker.mqtt.cool`), será substituído por um broker real futuramente.
+
+### Convenção de tópicos
+
+Todos os tópicos usam o root `maquete_inteligente`:
+
+- `maquete_inteligente/<cômodo>/<componente>/state` — telemetria (estado de sensores/atuadores)
+- `maquete_inteligente/<cômodo>/<componente>/command` — controle (comandos do usuário)
+
+**Exemplo:** `maquete_inteligente/sala/led/state` (estado da luz) e `maquete_inteligente/sala/led/command` (ligar/desligar).
+
 ## Principais sensores
 
 ### 1. MH-SR602(ou semelhante) — Sensor de presença
@@ -54,7 +88,7 @@ Detecta movimento/presença de pessoas.
 
 ---
 
-### 2. DHT22(ou semelhante) — Temperatura e umidade
+### 2. DHT11(ou semelhante) — Temperatura e umidade
 
 Mede:
 - Temperatura
@@ -132,7 +166,7 @@ Será utlitizado como meio de iluminação.
 - Luz do quarto
 - Luz da sala
 
-**Quantidade: 8**
+**Quantidade: 6**
 
 ---
 
@@ -166,7 +200,7 @@ Utilizado para movimentar partes móveis leves.
 - Portas
 - Janelas
 
-**Quantidade: 5**
+**Quantidade: 1**
 
 ---
 
@@ -192,3 +226,24 @@ Utilizado para emitir sons.
 ---
 
 **By:** <a href="https://github.com/benibgw">Benício G. Wendt</a> and <a href="https://github.com/oLima33">Lorenzo F. Lima</a>
+
+---
+
+## TODO
+
+Correções e melhorias pendentes, priorizadas:
+
+### Alta prioridade (funcionamento)
+- [ ] Corrigir bug do DHT11: quando a leitura inicial for inválida (NaN), o `PublishIfChanged` com tolerância nunca publica o primeiro valor válido (`Firmware/src/Maquete/Maquete.cpp:601-609`). Publicar quando `last` for NaN.
+- [ ] Adicionar `retain=True` nos publishes de `state` do Script (ou republicar estado completo periodicamente) para que o WebSite recupere os valores após reiniciar, em vez de mostrar `--`.
+- [ ] Resolver conflito de Timer5 no Mega: cooler usa `analogWrite(44)` (Timer5C) e a lib Servo ocupa o Timer5. Mover o cooler para outro timer (ex.: Timer3/4) ou `detach()` do servo quando ocioso.
+
+### Média prioridade (confiabilidade/UX)
+- [ ] Corrigir ângulo inicial do servo (publica ~93° em vez de 0° no boot) — gravar `write(0)` no attach ou usar o membro `Angle`.
+- [ ] Tornar o `Stepper.step()` do Nema17 não-bloqueante (passo por frame) para não congelar o loop durante o portão.
+- [ ] Verificar a polaridade física do MC38 (NO vs NC) — código assume `HIGH` = porta aberta.
+
+### Operacional
+- [ ] Endurecer a detecção de porta serial no Script (`Script/main.py:15-20`) com filtro por VID/PID ao lidar com múltiplos dispositivos USB.
+- [ ] Migrar o Script para `paho-mqtt` `CallbackAPIVersion.VERSION2` (hoje usa V1, deprecation warning).
+- [ ] Implementar broker real com autenticação (hoje usa `broker.mqtt.cool` público, só para testes).

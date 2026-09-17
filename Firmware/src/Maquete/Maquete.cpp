@@ -163,6 +163,7 @@ CozinhaExaustorState = false;
 }
 
 void MaqueteClass::Begin(){
+    Serial.begin(9600);
     SalaDht.Begin();
     QuartoDht.Begin();
     Display.Begin();
