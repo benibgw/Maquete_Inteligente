@@ -10,18 +10,48 @@ Maquete de uma casa inteligente controlada por um site acessível pelo celular o
 Sensores e atuadores são gerenciados por um **Arduino Mega 2560**; a comunicação entre as
 partes acontece por **MQTT**, com uma ponte **Serial**.
 
+## Tecnologias
+
+| Camada | Stack |
+| --- | --- |
+| **Firmware** | C++ · PlatformIO · Arduino Mega 2560 |
+| **Script** | Python 3 · paho-mqtt · pyserial |
+| **WebSite** | Python 3 · Flask · paho-mqtt · HTML/CSS/JavaScript |
+| **Testes** | Python 3 · paho-mqtt (`Project_Test`) |
+| **Comunicação** | MQTT (broker) + Serial 9600 (JSON por linha) |
+
+Requisitos: **PlatformIO Core** (firmware) e **Python 3** (Script, WebSite e Project_Test).
+
 ## Estrutura lógica
 
-Quando acionada, o usuário pode controlar diversas funções na maquete:
-- Acionar luzes dos cômodos
-- Ativar atuadores (servo motores, display, portão)
+O sistema opera em três frentes complementares: **controle manual** pelo usuário, **automações**
+baseadas nos sensores e um **painel local** na própria maquete.
 
-Funções automáticas também são executadas a partir da leitura de sensores:
-- Temperatura e umidade
-- Detecção de fumaça/gás
-- Intensidade luminosa
-- Detecção de presença
-- Sensores magnéticos e de campo (Hall)
+### Controle manual (via WebSite)
+
+Pelo site, acessível do celular ou notebook, o usuário pode:
+- Ligar/desligar as luzes de cada cômodo (sala, quarto, banheiro, cozinha, escritório e garagem)
+- Abrir/fechar a porta da sala (servo) e o portão da garagem (motor de passo)
+- Ligar/desligar o exaustor da cozinha
+- Armar/desarmar o alarme e acionar o buzzer manualmente
+
+### Automações
+
+Funções executadas continuamente pelo firmware a partir da leitura dos sensores:
+- **Iluminação**: as luzes acendem quando o ambiente está escuro ou há presença, e apagam quando
+  clareia e não há movimento. Um comando manual tem prioridade por 60s.
+- **Fumaça/gás (cozinha)**: ao detectar fumaça, liga o exaustor e dispara o alerta; o exaustor
+  volta a desligar sozinho quando a leitura normaliza.
+- **Portão (garagem)**: o sensor Hall detecta o veículo e abre o portão, que fecha automaticamente
+  após 30s.
+- **Segurança**: com o alarme armado, a detecção de presença dispara o alarme e o buzzer até ser
+  desarmado.
+- **Clima**: leitura contínua de temperatura e umidade (DHT11) da sala e do quarto.
+
+### Painel local
+
+Um display OLED 128x64 embutido na maquete mostra o estado do sistema, alternando a cada 5s entre
+as páginas **Segurança**, **Cozinha**, **Ambiente** e **Acessos**.
 
 Todo o gerenciamento é feito por meio de um site acessível pelo celular ou notebook, construído
 com base em um **Arduino Mega 2560**, com programação em **HTML, CSS, JavaScript, Python e C++**.
@@ -73,7 +103,30 @@ Firmware (Arduino Mega 2560, C++)
 - **Broker MQTT**: usado somente para testes (`broker.mqtt.cool`), será substituído por um
   broker real futuramente.
 
-## Módulos do repositório
+### Fluxo de um comando (ponta a ponta)
+
+1. O usuário toca em "Abrir portão" no site.
+2. O WebSite faz `POST /api/command` e publica em `maquete_inteligente/garagem/portao/command`.
+3. O broker entrega ao Script, que escreve `{"maquete_inteligente/garagem/portao/command":true}` na Serial.
+4. O firmware move o motor de passo e publica `{"maquete_inteligente/garagem/portao/position":50}` na Serial.
+5. O Script republica no broker (com `retain`) e o WebSite atualiza a interface.
+
+### Heartbeat / status online
+
+O firmware publica `maquete_inteligente/status/online` a cada **30s**; o WebSite marca o sistema
+como **online** se o heartbeat chegar em menos de **40s**. O `Project_Test` reproduz o mesmo
+comportamento para testes sem a placa.
+
+## Estrutura do repositório
+
+```
+Maquete_Inteligente/
+├── Firmware/       # Arduino Mega 2560 (PlatformIO, C++)
+├── Script/         # ponte Serial ⇄ MQTT (Python)
+├── WebSite/        # servidor Flask + interface web
+├── Project_Test/   # simulador de Arduino via MQTT (testes sem hardware)
+└── README.md
+```
 
 | Módulo | Pasta | Descrição | Documentação |
 | --- | --- | --- | --- |
@@ -146,156 +199,31 @@ Tópicos `command` (todos booleanos): `{sala,quarto,banheiro,cozinha,escritorio,
 **Exemplo:** `maquete_inteligente/sala/led/state` (estado da luz) e
 `maquete_inteligente/sala/led/command` (ligar/desligar).
 
-## Principais sensores
+## Hardware
 
-### 1. MH-SR602 (ou semelhante) — Sensor de presença
+### Sensores
 
-Detecta movimento/presença de pessoas.
+| Sensor | Qtd | Cômodo(s) | Função | Tópicos |
+| --- | --- | --- | --- | --- |
+| MH-SR602 (presença/PIR) | 3 | sala, garagem, pátio | detecta movimento; acende luz / dispara alarme | `<cômodo>/movimento/state` |
+| DHT11 (temperatura/umidade) | 2 | sala, quarto | leitura de clima | `<cômodo>/dht11/temperature`, `<cômodo>/dht11/humidity` |
+| LDR | 6 | todos os cômodos | luminosidade; base da regra de luz | `<cômodo>/ldr/luminosity` |
+| MQ-2 (gás/fumaça) | 1 | cozinha | fumaça → liga exaustor e dispara alerta | `cozinha/fumaca/state`, `cozinha/fumaca/percentage` |
+| KY-003 (Hall) | 1 | garagem | detecta o ímã do carro → abre o portão | `garagem/hall/state` |
+| MC-38 (magnético) | 2 | porta da sala, portão | detecta abertura | `sala/porta/state`, `garagem/portao/state` |
 
-**Exemplo:**
-- Pessoa entra na sala
-- MH-SR602 detecta presença
-- O firmware acende o LED da sala
+> Pinagem detalhada em [Firmware/README.md](Firmware/README.md).
 
-**Quantidade: 3**
+### Atuadores
 
----
-
-### 2. DHT11 (ou semelhante) — Temperatura e umidade
-
-Mede:
-- Temperatura
-- Umidade relativa do ar
-
-**Exemplo:**
-- Temperatura > 27 °C
-- O firmware liga o ventilador
-
-**Quantidade: 2**
-
----
-
-### 3. LDR — Sensor de luminosidade
-
-Detecta a intensidade de luz do ambiente.
-
-**Exemplo:**
-- Está escuro
-- Há uma pessoa na sala
-- O firmware acende a iluminação
-
-**Quantidade: 6**
-
----
-
-### 4. MQ-2 (ou semelhante) — Gás e fumaça
-
-Utilizado como sistema de segurança na cozinha.
-
-**Exemplo:**
-- MQ-2 detecta gás/fumaça
-- LED vermelho acende
-- Buzzer dispara
-- Sistema envia um alerta
-
-**Quantidade: 1**
-
----
-
-### 5. KY-003 (ou semelhante) — Sensor Hall
-
-Mede a intensidade do campo magnético.
-
-**Exemplo na garagem:**
-- Carro se aproxima
-- KY-003 detecta o ímã do veículo
-- O firmware abre o portão (motor de passo)
-
-**Quantidade: 1**
-
----
-
-### 6. MC-38 (ou semelhante) — Sensor magnético
-
-Pode ser instalado em portas e janelas para detectar abertura.
-
-**Exemplo:**
-- Porta é aberta
-- MC-38 muda de estado
-- O firmware registra a abertura
-- Em modo de segurança, o sistema dispara um alarme
-
-**Quantidade: 2**
-
----
-
-## Principais atuadores
-
-### 1. LED de alto brilho
-
-Utilizado como meio de iluminação.
-
-**Exemplo:**
-- Luz do quarto
-- Luz da sala
-
-**Quantidade: 6**
-
----
-
-### 2. Display LCD 128x64
-
-Utilizado como dispositivo de visualização de dados.
-
-**Exemplo:**
-- Painel de controle central inteligente
-- Alterna entre as páginas: Segurança, Cozinha, Ambiente e Acessos
-
-**Quantidade: 1**
-
----
-
-### 3. NEMA-17 (ou semelhante) — Motor de passo
-
-Utilizado para movimentar partes móveis pesadas.
-
-**Exemplo:**
-- Portão da garagem
-
-**Quantidade: 1**
-
----
-
-### 4. SG90 (ou semelhante) — Micro servo motor
-
-Utilizado para movimentar partes móveis leves.
-
-**Exemplo:**
-- Portas
-- Janelas
-
-**Quantidade: 1**
-
----
-
-### 5. Mini Cooler 5V
-
-**Exemplo:**
-- Exaustor na cozinha
-- Ventilador
-
-**Quantidade: 1**
-
----
-
-### 6. Buzzer Ativo 5V
-
-Utilizado para emitir sons.
-
-**Exemplo:**
-- Alarme
-
-**Quantidade: 1**
+| Atuador | Qtd | Função | Tópicos |
+| --- | --- | --- | --- |
+| LED de alto brilho | 6 | iluminação dos cômodos | `<cômodo>/led/state` |
+| Display OLED 128x64 | 1 | painel local (Segurança/Cozinha/Ambiente/Acessos) | — |
+| NEMA-17 (motor de passo) | 1 | portão da garagem | `garagem/portao/position` |
+| Servo SG90 | 1 | porta da sala | `sala/porta/servo_angle` |
+| Mini cooler 5V | 1 | exaustor da cozinha | `cozinha/exaustor/state` |
+| Buzzer ativo 5V | 1 | alarme | `principal/buzzer/state` |
 
 ---
 
