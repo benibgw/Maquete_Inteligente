@@ -6,5 +6,5 @@ MC38Class::MC38Class(uint8_t pin){
 }
 
 bool MC38Class::GetState(){
-    return digitalRead(Pin) == LOW;
+    return digitalRead(Pin) == HIGH;
 }

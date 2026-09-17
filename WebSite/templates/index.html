@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maquete Inteligente</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>Maquete Inteligente</h1>
+    <span id="connection" class="badge offline">offline</span>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Segurança</h2>
+      <div class="rows">
+        <div class="row"><span>Alarme</span><strong id="alarm-state">--</strong></div>
+        <div class="row"><span>Disparo</span><strong id="alarm-triggered">--</strong></div>
+        <div class="row"><span>Sirene</span><strong id="buzzer-state">--</strong></div>
+      </div>
+      <div class="actions">
+        <button id="alarm-arm">Armar</button>
+        <button id="alarm-disarm" class="ghost">Desarmar</button>
+        <button id="buzzer-on">Sirene ON</button>
+        <button id="buzzer-off" class="ghost">Sirene OFF</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Cozinha</h2>
+      <div class="rows">
+        <div class="row"><span>Fumaça</span><strong id="smoke-pct">--</strong></div>
+        <div class="row"><span>Alerta</span><strong id="smoke-state">--</strong></div>
+        <div class="row"><span>Exaustor</span><strong id="exhaust-state">--</strong></div>
+      </div>
+      <div class="actions">
+        <button id="exhaust-toggle">Alternar exaustor</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Acessos</h2>
+      <div class="rows">
+        <div class="row"><span>Porta</span><strong id="door-state">--</strong></div>
+        <div class="row"><span>Ângulo</span><strong id="door-angle">--</strong></div>
+        <div class="row"><span>Portão</span><strong id="gate-state">--</strong></div>
+        <div class="row"><span>Posição</span><strong id="gate-position">--</strong></div>
+        <div class="row"><span>Hall</span><strong id="hall-state">--</strong></div>
+      </div>
+      <div class="actions">
+        <button id="door-open">Abrir porta</button>
+        <button id="door-close" class="ghost">Fechar porta</button>
+        <button id="gate-open">Abrir portão</button>
+        <button id="gate-close" class="ghost">Fechar portão</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Ambiente</h2>
+      <div class="rows">
+        <div class="row"><span>Sala</span><strong id="sala-dht">--</strong></div>
+        <div class="row"><span>Quarto</span><strong id="quarto-dht">--</strong></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Presença</h2>
+      <div class="rows">
+        <div class="row"><span>Sala</span><strong id="motion-sala">--</strong></div>
+        <div class="row"><span>Garagem</span><strong id="motion-garagem">--</strong></div>
+        <div class="row"><span>Pátio</span><strong id="motion-patio">--</strong></div>
+      </div>
+    </section>
+
+    <section class="card wide">
+      <h2>Iluminação</h2>
+      <div class="rooms" id="rooms-grid"></div>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

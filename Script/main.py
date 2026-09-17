@@ -53,6 +53,16 @@ def connect_serial():
 MQTT_ROOT_TOPIC = "maquete_inteligente"
 
 
+def parse_boolean(value):
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized == "true":
+            return True
+        if normalized == "false":
+            return False
+    return value
+
+
 def main():
     client = connect_mqtt()
     ser = connect_serial()
@@ -69,6 +79,7 @@ def main():
         except json.JSONDecodeError:
             message = payload
 
+        message = parse_boolean(message)
         data = {topic: message}
         try:
             state["ser"].write((json.dumps(data) + "\n").encode("utf-8"))
@@ -88,9 +99,9 @@ def main():
                     continue
 
                 data = json.loads(line)
-                topic = data[next(iter(data))]
-                message = data[list(data.keys())[1]]
-                client.publish(topic, message)
+                topic = next(iter(data))
+                message = parse_boolean(data[topic])
+                client.publish(topic, json.dumps(message))
                 print(f"Publicado tópico={topic} mensagem={message}")
             except json.JSONDecodeError:
                 print(f"Ignorando linha inválida: {line}")

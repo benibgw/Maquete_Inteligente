@@ -124,6 +124,7 @@ CozinhaExaustorState = false;
     LastPatioMovimentoState = false;
     LastCozinhaExaustorState = false;
     LastAlarmState = false;
+    LastAlarmTriggered = false;
     LastBuzzerState = false;
 
     LastSalaLuminosity = 0.0f;
@@ -155,6 +156,7 @@ CozinhaExaustorState = false;
     EscritorioLedManualUntil = 0;
     GaragemLedManualUntil = 0;
     ExaustorManualUntil = 0;
+    BuzzerManualUntil = 0;
     PortaoCloseAt = 0;
     DisplayPage = 0;
     LastDisplayPageChange = 0;
@@ -275,19 +277,26 @@ void MaqueteClass::ApplyRules(){
         }
     }
 
-    if (AlarmState){
-        bool intrusion = SalaMovimentoState || GaragemMovimentoState || PatioMovimentoState;
-        if (intrusion){
-            AlarmTriggered = true;
+    if (now >= BuzzerManualUntil){
+        if (AlarmState){
+            bool intrusion = SalaMovimentoState || GaragemMovimentoState || PatioMovimentoState;
+            if (intrusion){
+                AlarmTriggered = true;
+            }
+            if (AlarmTriggered){
+                Buzzer.PlayTone(AlarmFrequency);
+            }
+            else{
+                Buzzer.StopTone();
+            }
         }
-        if (AlarmTriggered){
-            Buzzer.PlayTone(AlarmFrequency);
+        else{
+            AlarmTriggered = false;
+            Buzzer.StopTone();
         }
     }
-    else{
-        AlarmTriggered = false;
-        Buzzer.StopTone();
-    }
+
+    BuzzerState = Buzzer.GetState();
 }
 
 void MaqueteClass::ProcessInbound(){
@@ -329,6 +338,14 @@ void MaqueteClass::HandleCommand(const char* topic, bool value){
 
     if (strcmp_P(component, PSTR("led")) == 0){
         HandleLedCommand(room, value);
+        return;
+    }
+    if (strcmp_P(component, PSTR("alarme")) == 0){
+        HandleAlarmCommand(value);
+        return;
+    }
+    if (strcmp_P(component, PSTR("buzzer")) == 0){
+        HandleBuzzerCommand(value);
         return;
     }
     if (strcmp_P(room, PSTR("cozinha")) == 0 && strcmp_P(component, PSTR("exaustor")) == 0){
@@ -373,6 +390,25 @@ void MaqueteClass::HandleExaustorCommand(bool value){
     }
     else{
         CozinhaExaustor.TurnOFF();
+    }
+}
+
+void MaqueteClass::HandleAlarmCommand(bool value){
+    AlarmState = value;
+    if (!AlarmState){
+        AlarmTriggered = false;
+        Buzzer.StopTone();
+        BuzzerState = false;
+    }
+}
+
+void MaqueteClass::HandleBuzzerCommand(bool value){
+    BuzzerManualUntil = millis() + ManualOverrideDuration;
+    if (value){
+        Buzzer.PlayTone(AlarmFrequency);
+    }
+    else{
+        Buzzer.StopTone();
     }
 }
 
@@ -448,6 +484,10 @@ void MaqueteClass::PublishDelta(){
     PublishIfChanged(F("maquete_inteligente/garagem/movimento/state"), GaragemMovimentoState, LastGaragemMovimentoState);
 
     PublishIfChanged(F("maquete_inteligente/patio/movimento/state"), PatioMovimentoState, LastPatioMovimentoState);
+
+    PublishIfChanged(F("maquete_inteligente/principal/alarme/state"), AlarmState, LastAlarmState);
+    PublishIfChanged(F("maquete_inteligente/principal/alarme/triggered"), AlarmTriggered, LastAlarmTriggered);
+    PublishIfChanged(F("maquete_inteligente/principal/buzzer/state"), BuzzerState, LastBuzzerState);
 }
 
 void MaqueteClass::PublishAllState(){
@@ -515,6 +555,13 @@ void MaqueteClass::PublishAllState(){
 
     PublishTopic(F("maquete_inteligente/patio/movimento/state"), PatioMovimentoState);
     LastPatioMovimentoState = PatioMovimentoState;
+
+    PublishTopic(F("maquete_inteligente/principal/alarme/state"), AlarmState);
+    LastAlarmState = AlarmState;
+    PublishTopic(F("maquete_inteligente/principal/alarme/triggered"), AlarmTriggered);
+    LastAlarmTriggered = AlarmTriggered;
+    PublishTopic(F("maquete_inteligente/principal/buzzer/state"), BuzzerState);
+    LastBuzzerState = BuzzerState;
 }
 
 void MaqueteClass::PublishHeartbeat(){
