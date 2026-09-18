@@ -31,7 +31,6 @@ class MaqueteClass{
         void HandlePortaCommand(bool value);
         void HandlePortaoCommand(bool value);
         void HandleAlarmCommand(bool value);
-        void HandleBuzzerCommand(bool value);
         void SetPortaoPosition(int32_t target);
         void UpdateDisplay();
         void DrawSecurityPage();
@@ -159,7 +158,6 @@ class MaqueteClass{
         uint32_t EscritorioLedManualUntil;
         uint32_t GaragemLedManualUntil;
         uint32_t ExaustorManualUntil;
-        uint32_t BuzzerManualUntil;
         uint32_t PortaoCloseAt;
 
         uint8_t DisplayPage;

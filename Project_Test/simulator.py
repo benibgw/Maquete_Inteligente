@@ -60,7 +60,6 @@ last_motion = {sensor: 0 for sensor in MOTION_SENSORS}
 manual_until = {
     **{f"{room}/led": 0 for room in ROOMS},
     "cozinha/exaustor": 0,
-    "buzzer": 0,
 }
 hall_until = 0
 
@@ -159,12 +158,6 @@ def on_message(client, userdata, msg):
             publish_changed("principal/alarme/triggered", False)
             publish_changed("principal/buzzer/state", False)
         print(f"Comando recebido: {msg.topic} -> alarme {'armado' if value else 'desarmado'}")
-    elif room == "principal" and component == "buzzer":
-        suffix = "principal/buzzer/state"
-        state[suffix] = bool(value)
-        manual_until["buzzer"] = now + MANUAL_OVERRIDE_DURATION
-        publish_changed(suffix, state[suffix])
-        print(f"Comando recebido: {msg.topic} -> buzzer {'ligado' if value else 'desligado'}")
 
 
 def animate(value, target, step):
@@ -290,7 +283,7 @@ def update_alarm_and_buzzer(now):
     if intrusion:
         state["principal/alarme/triggered"] = True
 
-    if state["principal/alarme/triggered"] and now >= manual_until.get("buzzer", 0):
+    if state["principal/alarme/triggered"]:
         state["principal/buzzer/state"] = True
 
 

@@ -33,7 +33,7 @@ Pelo site, acessível do celular ou notebook, o usuário pode:
 - Ligar/desligar as luzes de cada cômodo (sala, quarto, banheiro, cozinha, escritório e garagem)
 - Abrir/fechar a porta da sala (servo) e o portão da garagem (motor de passo)
 - Ligar/desligar o exaustor da cozinha
-- Armar/desarmar o alarme e acionar o buzzer manualmente
+- Armar/desarmar o alarme
 
 ### Automações
 
@@ -194,7 +194,7 @@ Todos os tópicos usam o root `maquete_inteligente`:
 | `status` | `online` (bool) — heartbeat |
 
 Tópicos `command` (todos booleanos): `{sala,quarto,banheiro,cozinha,escritorio,garagem}/led`,
-`cozinha/exaustor`, `sala/porta`, `garagem/portao`, `principal/alarme` e `principal/buzzer`.
+`cozinha/exaustor`, `sala/porta`, `garagem/portao` e `principal/alarme`.
 
 **Exemplo:** `maquete_inteligente/sala/led/state` (estado da luz) e
 `maquete_inteligente/sala/led/command` (ligar/desligar).

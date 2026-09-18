@@ -156,7 +156,6 @@ MaqueteClass::MaqueteClass()
     EscritorioLedManualUntil = 0;
     GaragemLedManualUntil = 0;
     ExaustorManualUntil = 0;
-    BuzzerManualUntil = 0;
     PortaoCloseAt = 0;
     DisplayPage = 0;
     LastDisplayPageChange = 0;
@@ -280,23 +279,21 @@ void MaqueteClass::ApplyRules(){
         }
     }
 
-    if (now >= BuzzerManualUntil){
-        if (AlarmState){
-            bool intrusion = SalaMovimentoState || GaragemMovimentoState || PatioMovimentoState;
-            if (intrusion){
-                AlarmTriggered = true;
-            }
-            if (AlarmTriggered){
-                Buzzer.PlayTone(AlarmFrequency);
-            }
-            else{
-                Buzzer.StopTone();
-            }
+    if (AlarmState){
+        bool intrusion = SalaMovimentoState || GaragemMovimentoState || PatioMovimentoState;
+        if (intrusion){
+            AlarmTriggered = true;
+        }
+        if (AlarmTriggered){
+            Buzzer.PlayTone(AlarmFrequency);
         }
         else{
-            AlarmTriggered = false;
             Buzzer.StopTone();
         }
+    }
+    else{
+        AlarmTriggered = false;
+        Buzzer.StopTone();
     }
 
     BuzzerState = Buzzer.GetState();
@@ -345,10 +342,6 @@ void MaqueteClass::HandleCommand(const char* topic, bool value){
     }
     if (strcmp_P(component, PSTR("alarme")) == 0){
         HandleAlarmCommand(value);
-        return;
-    }
-    if (strcmp_P(component, PSTR("buzzer")) == 0){
-        HandleBuzzerCommand(value);
         return;
     }
     if (strcmp_P(room, PSTR("cozinha")) == 0 && strcmp_P(component, PSTR("exaustor")) == 0){
@@ -402,16 +395,6 @@ void MaqueteClass::HandleAlarmCommand(bool value){
         AlarmTriggered = false;
         Buzzer.StopTone();
         BuzzerState = false;
-    }
-}
-
-void MaqueteClass::HandleBuzzerCommand(bool value){
-    BuzzerManualUntil = millis() + ManualOverrideDuration;
-    if (value){
-        Buzzer.PlayTone(AlarmFrequency);
-    }
-    else{
-        Buzzer.StopTone();
     }
 }
 

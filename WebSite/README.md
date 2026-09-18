@@ -26,7 +26,7 @@ WebSite/
 
 ## O que o painel mostra
 
-- **Segurança**: alarme (armado/desarmado), disparo, buzzer; armar/desarmar e buzzer ON/OFF.
+- **Segurança**: alarme (armado/desarmado), disparo (badge de destaque), buzzer; armar/desarmar.
 - **Presença**: movimento na sala, garagem e pátio.
 - **Acessos**: porta da sala (estado e ângulo do servo), portão da garagem (estado e posição), sensor Hall.
 - **Ambiente**: temperatura/umidade (DHT11) da sala e do quarto.

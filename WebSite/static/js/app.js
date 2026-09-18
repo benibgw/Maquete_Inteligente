@@ -55,6 +55,21 @@ function setStatus(id, v, on, off, onClass = "state-on") {
   el.className = "status " + (v === true ? onClass : v === false ? "state-off" : "state-na");
 }
 
+function setTriggeredBadge(v) {
+  const el = document.getElementById("alarm-triggered-badge");
+  if (!el) return;
+  if (v === true) {
+    el.textContent = "DISPARADO";
+    el.className = "status-badge alert";
+  } else if (v === false) {
+    el.textContent = "NORMAL";
+    el.className = "status-badge ok";
+  } else {
+    el.textContent = "--";
+    el.className = "status-badge state-na";
+  }
+}
+
 function setConnection(online) {
   const el = document.getElementById("connection");
   if (!el) return;
@@ -160,6 +175,7 @@ function render(data) {
   setStatus("alarm-triggered", value("principal/alarme/triggered"), "SIM", "NAO", "state-alert");
   setStatus("buzzer-state", value("principal/buzzer/state"), "LIGADA", "DESLIGADA");
   toggleCardAlert("card-security", value("principal/alarme/triggered") === true);
+  setTriggeredBadge(value("principal/alarme/triggered"));
 
   const smoke = value("cozinha/fumaca/percentage");
   setText("smoke-pct", numberText(smoke, 1, " %"));
@@ -206,8 +222,6 @@ function bindControls() {
 
   bind("alarm-arm", topic("principal/alarme/command"), true);
   bind("alarm-disarm", topic("principal/alarme/command"), false);
-  bind("buzzer-on", topic("principal/buzzer/command"), true);
-  bind("buzzer-off", topic("principal/buzzer/command"), false);
   bind("door-open", topic("sala/porta/command"), true);
   bind("door-close", topic("sala/porta/command"), false);
   bind("gate-open", topic("garagem/portao/command"), true);

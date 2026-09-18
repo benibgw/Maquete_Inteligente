@@ -16,7 +16,6 @@ Serve para testar a integração WebSite ↔ MQTT sem a placa e a fiação conec
   - `sala/porta/command` → abre/fecha a porta (anima o ângulo do servo)
   - `garagem/portao/command` → abre/fecha o portão (anima a posição)
   - `principal/alarme/command` → arma/desarma (desarmar limpa disparo e buzzer)
-  - `principal/buzzer/command` → liga/desliga o buzzer
 - Roda um cenário automático contínuo:
   - Temperatura e umidade dos DHT11 oscilando suavemente.
   - Luminosidade dos LDRs em ciclo (dia/noite) com regra automática de luzes.

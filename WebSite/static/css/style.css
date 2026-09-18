@@ -394,6 +394,52 @@ button.ghost:hover {
   border-color: rgba(203, 166, 247, 0.4);
 }
 
+.status-badge {
+  flex: 1 1 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+
+.status-badge::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.status-badge.alert {
+  background: rgba(243, 139, 168, 0.15);
+  border: 1px solid rgba(243, 139, 168, 0.4);
+  color: var(--alert);
+}
+
+.status-badge.alert::before {
+  animation: pulse 1.3s infinite;
+}
+
+.status-badge.ok {
+  background: rgba(166, 227, 161, 0.12);
+  border: 1px solid rgba(166, 227, 161, 0.35);
+  color: var(--on);
+}
+
+.status-badge.state-na {
+  background: rgba(17, 17, 27, 0.45);
+  border: 1px solid var(--card-border);
+  color: var(--muted);
+  opacity: 0.7;
+}
+
 .rooms {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
