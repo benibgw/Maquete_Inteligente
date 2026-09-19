@@ -8,8 +8,9 @@ Serve para testar a integração WebSite ↔ MQTT sem a placa e a fiação conec
 ## O que o simulador faz
 
 - Publica todos os tópicos de `state` no padrão do firmware, com `retain=True`.
-- Envia o heartbeat (`maquete_inteligente/status/online`) não-retido, para o WebSite
-  marcar o sistema como online.
+- Publica o heartbeat (`maquete_inteligente/status/online`) **retido** em `true` (no connect e a
+  cada 30s), com **LWT** (`false` retido) para o WebSite marcar offline na hora se o simulador
+  cair; ao encerrar, publica `false` explicitamente.
 - Assina os tópicos `.../command` e aplica as ações, devolvendo o novo estado:
   - `<cômodo>/led/command` → liga/desliga luz (com override manual de 60s)
   - `cozinha/exaustor/command` → liga/desliga exaustor
@@ -50,6 +51,7 @@ http://localhost:5000 — os estados aparecem via MQTT.
 | --- | --- | --- |
 | `--broker` | `broker.mqtt.cool` (ou env `MQTT_BROKER`) | Endereço do broker MQTT |
 | `--port` | `1883` (ou env `MQTT_PORT`) | Porta do broker |
+| `--username` / `--password` | env `MQTT_USERNAME`/`MQTT_PASSWORD` | Credenciais MQTT (opcional) |
 | `--interval` | `1.0` | Intervalo do tick de simulação (s) |
 | `--heartbeat` | `30` | Intervalo do heartbeat (s) |
 

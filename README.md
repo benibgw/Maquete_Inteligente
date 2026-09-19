@@ -60,10 +60,11 @@ com base em um **Arduino Mega 2560**, com programação em **HTML, CSS, JavaScri
 
 A maquete é construída em **MDF 20mm**, seguindo o modelo de uma casa moderna de dois andares,
 com um dos lados expostos, contando com:
-- 2 quartos
+- Quarto
 - Sala de estar
 - Cozinha
 - Banheiro
+- Escritório
 - Garagem
 - Pátio frontal
 
@@ -101,7 +102,9 @@ Firmware (Arduino Mega 2560, C++)
 - **WebSite** (`WebSite/app.py`): assina os tópicos do broker, mantém o estado atualizado e
   expõe a interface web de monitoramento e controle.
 - **Broker MQTT**: usado somente para testes (`broker.mqtt.cool`), será substituído por um
-  broker real futuramente.
+  broker real futuramente. O endereço/credenciais são configuráveis por variáveis de ambiente
+  (`MQTT_BROKER`, `MQTT_PORT`, `MQTT_USERNAME`, `MQTT_PASSWORD`) em todos os módulos —
+  para trocar para um broker local basta exportar as variáveis ao iniciar.
 
 ### Fluxo de um comando (ponta a ponta)
 
@@ -113,9 +116,10 @@ Firmware (Arduino Mega 2560, C++)
 
 ### Heartbeat / status online
 
-O firmware publica `maquete_inteligente/status/online` a cada **30s**; o WebSite marca o sistema
-como **online** se o heartbeat chegar em menos de **40s**. O `Project_Test` reproduz o mesmo
-comportamento para testes sem a placa.
+O firmware/simulador publica `maquete_inteligente/status/online` retido em **`true`** (ao
+conectar e a cada **30s**); o WebSite mostra **online** quando o valor retido é `true` e chegou
+há menos de **40s** (rede de segurança `ONLINE_TIMEOUT`). Ao cair, a fonte usa **LWT**
+(**`false`** retido) e o WebSite marca **offline** imediatamente.
 
 ## Estrutura do repositório
 
@@ -207,7 +211,7 @@ Tópicos `command` (todos booleanos): `{sala,quarto,banheiro,cozinha,escritorio,
 | --- | --- | --- | --- | --- |
 | MH-SR602 (presença/PIR) | 3 | sala, garagem, pátio | detecta movimento; acende luz / dispara alarme | `<cômodo>/movimento/state` |
 | DHT11 (temperatura/umidade) | 2 | sala, quarto | leitura de clima | `<cômodo>/dht11/temperature`, `<cômodo>/dht11/humidity` |
-| LDR | 6 | todos os cômodos | luminosidade; base da regra de luz | `<cômodo>/ldr/luminosity` |
+| LDR | 6 | sala, quarto, banheiro, cozinha, escritório e garagem | luminosidade; base da regra de luz | `<cômodo>/ldr/luminosity` |
 | MQ-2 (gás/fumaça) | 1 | cozinha | fumaça → liga exaustor e dispara alerta | `cozinha/fumaca/state`, `cozinha/fumaca/percentage` |
 | KY-003 (Hall) | 1 | garagem | detecta o ímã do carro → abre o portão | `garagem/hall/state` |
 | MC-38 (magnético) | 2 | porta da sala, portão | detecta abertura | `sala/porta/state`, `garagem/portao/state` |

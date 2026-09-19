@@ -46,7 +46,7 @@ Firmware/
 | DHT11 sala / quarto | 35, 36 | |
 | Cooler exaustor da cozinha | 5 | **Timer3** — não usar o 44 (Timer5) |
 | Servo porta da sala | 37 | |
-| NEMA-17 portão | 38, 39, 40, 41 | wave drive, não-bloqueante |
+| NEMA-17 portão | 38, 39, 40, 41 | full-step (2 fases), não-bloqueante |
 | Buzzer | 42 | |
 | Display OLED 128x64 | I2C (SDA/SCL), endereço `0x3C` | |
 
@@ -102,6 +102,9 @@ Dependências (`platformio.ini`):
 
 - **Timer5**: a lib `Servo` usa o Timer5 do Mega. O cooler foi movido para o **pino 5 (Timer3)**;
   se for trocar o fio, ligue o exaustor no pino 5.
+- **DHT11**: cada sensor (sala e quarto) é lido alternadamente, um por ciclo de 2s — mantém o
+  intervalo mínimo de 1s exigido pelo sensor e reduz o bloqueio do loop pela metade.
+- **Watchdog (WDT)**: habilitado com timeout de 8s. Se o loop travar, a placa reinicia sozinha.
 - **MC38 (NO/NC)**: o construtor aceita `activeHigh`. Com `INPUT_PULLUP` + contato NC,
   use `MC38Class(pin, false)` para `HIGH` = porta aberta (padrão é `true`).
 - O servo inicia em 0° no boot.

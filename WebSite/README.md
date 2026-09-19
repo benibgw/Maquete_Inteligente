@@ -5,7 +5,7 @@ tópicos MQTT, mantém o estado em memória e expõe uma página responsiva (dar
 mostra os sensores em tempo real e envia comandos aos atuadores.
 
 ```
-Navegador (HTTP poll /api/state, POST /api/command)
+Navegador (SSE /api/stream, GET /api/state, POST /api/command)
         │
         ▼
 WebSite (Flask + paho-mqtt) ⇄ Broker MQTT (maquete_inteligente/...)
@@ -44,9 +44,11 @@ python app.py
 ```
 
 Acesse http://localhost:5000. O badge no topo indica o estado da conexão
-(`online`/`offline`): o WebSite considera o sistema online se o heartbeat
-(`maquete_inteligente/status/online`) chegar a cada menos de 40s (o firmware/simulador
-publica a cada 30s).
+(`online`/`offline`): o WebSite mostra **online** quando o valor de
+`maquete_inteligente/status/online` for `true` (heartbeat retido publicado pelo
+firmware/simulador, no connect e a cada 30s) **e** esse heartbeat tiver chegado nos últimos
+`ONLINE_TIMEOUT` segundos (rede de segurança). Quando a fonte cai, o **LWT** (`false` retido)
+marca offline imediatamente.
 
 ## API HTTP
 
@@ -67,7 +69,7 @@ Retorna o estado atual (online/offline + snapshot de todos os tópicos):
 
 ### `POST /api/command`
 
-Envia um comando para um tópico `command`. O corpo deve ser um JSON:
+Envia um comando para um tópico `command` (publicado com **QoS 1**). O corpo deve ser um JSON:
 
 ```json
 { "topic": "maquete_inteligente/sala/led/command", "value": true }
@@ -76,9 +78,18 @@ Envia um comando para um tópico `command`. O corpo deve ser um JSON:
 Validações: tópico dentro do root `maquete_inteligente/`, deve terminar em `/command`
 e `value` deve ser booleano. Resposta: `{"ok": true}` ou erro com código 400.
 
+### `GET /api/stream`
+
+Event-stream (SSE) usado pela interface para receber atualizações **em tempo real** sem
+polling. Ao conectar, envia um evento `snapshot` com `{online, state}`; depois, um evento
+por tópico alterado (`data: {topic, value}`) e um evento `meta` com o `online` atualizado a
+cada 5s (mantém a conexão viva e atualiza o badge offline/online). O tópico
+`maquete_inteligente/status/online` é excluído do snapshot de estado.
+
 ## Configuração
 
-As constantes ficam no topo de `app.py`:
+As constantes ficam no topo de `app.py` e podem ser sobrescritas por variáveis de ambiente
+com o mesmo nome (ex.: `MQTT_BROKER`, `WEB_HOST`):
 
 | Constante | Padrão | Descrição |
 | --- | --- | --- |
@@ -86,14 +97,16 @@ As constantes ficam no topo de `app.py`:
 | `MQTT_PORT` | `1883` | Porta do broker |
 | `MQTT_USERNAME` / `MQTT_PASSWORD` | `None` | Autenticação opcional |
 | `MQTT_ROOT_TOPIC` | `maquete_inteligente` | Root dos tópicos |
-| `ONLINE_TIMEOUT` | `40.0` | Tempo (s) sem heartbeat para marcar offline |
+| `ONLINE_TIMEOUT` | `40.0` | Rede de segurança: tempo (s) sem heartbeat `true` para marcar offline |
 | `WEB_HOST` / `WEB_PORT` | `0.0.0.0` / `5000` | Onde o Flask escuta |
 
 ## Como funciona internamente
 
 - Um thread `mqtt_worker` mantém `loop_forever()`, reconectando a cada 5s em caso de falha.
-- `on_message` normaliza o payload (JSON) e grava no dict `state` com lock.
-- O frontend faz `fetch("/api/state")` a cada 1s e atualiza a interface sem recarregar.
+- `on_message` normaliza o payload (JSON), grava no dict `state` com lock e faz broadcast
+  para os clientes do SSE.
+- O frontend usa `EventSource("/api/stream")` (com fallback para `/api/state`) e atualiza a
+  interface sem recarregar. No header há um badge com o horário da última atualização.
 - A página fica com opacidade reduzida quando o sistema está offline.
 
 ## Observações

@@ -8,8 +8,12 @@ ServosClass::ServosClass(uint8_t pin){
 }
 
 void ServosClass::SetAngle(uint8_t angle){
-    Angle = constrain(angle, 0, 180);
-    Motor.write(Angle);
+    angle = constrain(angle, 0, 180);
+    if (Angle == angle){
+        return;
+    }
+    Angle = angle;
+    Motor.write(angle);
 }
 
 uint8_t ServosClass::GetAngle(){

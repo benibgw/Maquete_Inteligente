@@ -100,6 +100,7 @@ def publish_all():
 
 def on_connect(client, userdata, flags, reason_code, properties=None):
     client.subscribe(f"{ROOT}/+/+/command")
+    client.publish(f"{ROOT}/status/online", json.dumps(True), retain=True)
     print(f"Inscrito no tópico: {ROOT}/+/+/command")
 
 
@@ -136,7 +137,7 @@ def on_message(client, userdata, msg):
     elif room == "cozinha" and component == "exaustor":
         suffix = "cozinha/exaustor/state"
         state[suffix] = bool(value)
-        manual_until[component] = now + MANUAL_OVERRIDE_DURATION
+        manual_until["cozinha/exaustor"] = now + MANUAL_OVERRIDE_DURATION
         publish_changed(suffix, state[suffix])
         print(f"Comando recebido: {msg.topic} -> exaustor {'ligado' if value else 'desligado'}")
     elif room == "sala" and component == "porta":
@@ -317,6 +318,11 @@ def main(args):
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2) \
         if hasattr(mqtt, "CallbackAPIVersion") else mqtt.Client()
 
+    if args.username and args.password:
+        client.username_pw_set(args.username, args.password)
+
+    client.will_set(full_topic("status/online"), json.dumps(False), qos=1, retain=True)
+
     try:
         client.connect(args.broker, args.port)
     except Exception as e:
@@ -357,12 +363,16 @@ def main(args):
 
             if now - last_heartbeat >= heartbeat_ms:
                 last_heartbeat = now
-                publish("status/online", True, retain=False)
+                publish("status/online", True, retain=True)
 
             time.sleep(0.05)
     except KeyboardInterrupt:
         print("\nEncerrando...")
     finally:
+        try:
+            publish("status/online", False, retain=True)
+        except Exception:
+            pass
         client.loop_stop()
         client.disconnect()
 
@@ -371,6 +381,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simulador de Arduino para a Maquete Inteligente via MQTT")
     parser.add_argument("--broker", default=os.getenv("MQTT_BROKER", "broker.mqtt.cool"))
     parser.add_argument("--port", type=int, default=int(os.getenv("MQTT_PORT", 1883)))
+    parser.add_argument("--username", default=os.getenv("MQTT_USERNAME"), help="usuário MQTT (opcional)")
+    parser.add_argument("--password", default=os.getenv("MQTT_PASSWORD"), help="senha MQTT (opcional)")
     parser.add_argument("--interval", type=float, default=1.0, help="intervalo do tick de simulação (s)")
     parser.add_argument("--heartbeat", type=int, default=30, help="intervalo do heartbeat (s)")
     main(parser.parse_args())

@@ -143,6 +143,7 @@ class MaqueteClass{
         int32_t LastGaragemPortaoPosition;
 
         bool FirstPublish;
+        bool DhtAlternate;
         unsigned long LastSensorRead;
         unsigned long LastHeartbeat;
         char CommandBuffer[CommandLineBufferSize];

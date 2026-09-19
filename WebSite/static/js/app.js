@@ -78,6 +78,12 @@ function setConnection(online) {
   document.body.classList.toggle("offline", !online);
 }
 
+function markSeen() {
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  setText("last-update", `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`);
+}
+
 function toggleCardAlert(id, active) {
   const el = document.getElementById(id);
   if (el) el.classList.toggle("card-alert", active);
@@ -169,6 +175,7 @@ function updateRooms() {
 
 function render(data) {
   currentState = data.state || {};
+  markSeen();
   setConnection(Boolean(data.online));
 
   setStatus("alarm-state", value("principal/alarme/state"), "ARMADO", "DESARMADO");
@@ -246,7 +253,37 @@ async function refresh() {
   }
 }
 
+let liveOnline = false;
+
+function startStream() {
+  if (!("EventSource" in window)) {
+    refresh();
+    setInterval(refresh, POLL_MS);
+    return;
+  }
+
+  const source = new EventSource("/api/stream");
+
+  source.addEventListener("snapshot", (event) => {
+    const data = JSON.parse(event.data);
+    liveOnline = Boolean(data.online);
+    currentState = data.state || {};
+    render({ state: currentState, online: liveOnline });
+  });
+
+  source.addEventListener("meta", (event) => {
+    const data = JSON.parse(event.data);
+    liveOnline = Boolean(data.online);
+    setConnection(liveOnline);
+  });
+
+  source.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    currentState[data.topic] = data.value;
+    render({ state: currentState, online: liveOnline });
+  };
+}
+
 buildRooms();
 bindControls();
-refresh();
-setInterval(refresh, POLL_MS);
+startStream();

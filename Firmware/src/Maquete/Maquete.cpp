@@ -1,5 +1,6 @@
 #include "Maquete.hpp"
 #include <ArduinoJson.h>
+#include <avr/wdt.h>
 #include <math.h>
 
 namespace{
@@ -143,6 +144,7 @@ MaqueteClass::MaqueteClass()
     LastGaragemPortaoPosition = 0;
 
     FirstPublish = true;
+    DhtAlternate = false;
     LastSensorRead = 0;
     LastHeartbeat = 0;
     CommandBufferIndex = 0;
@@ -169,10 +171,13 @@ void MaqueteClass::Begin(){
     Display.ClearShow();
     DrawSecurityPage();
     RefreshSensorState();
+    wdt_enable(WDTO_8S);
 }
 
 void MaqueteClass::Update(){
     unsigned long now = millis();
+
+    wdt_reset();
 
     ProcessInbound();
 
@@ -222,12 +227,17 @@ void MaqueteClass::RefreshSensorState(){
     GaragemMovimentoState = GaragemMovimento.GetState();
     PatioMovimentoState = PatioMovimento.GetState();
 
-    SalaDht.Refresh();
-    SalaTemperature = SalaDht.GetTemperature();
-    SalaHumidity = SalaDht.GetHumidity();
-    QuartoDht.Refresh();
-    QuartoTemperature = QuartoDht.GetTemperature();
-    QuartoHumidity = QuartoDht.GetHumidity();
+    if (DhtAlternate){
+        QuartoDht.Refresh();
+        QuartoTemperature = QuartoDht.GetTemperature();
+        QuartoHumidity = QuartoDht.GetHumidity();
+    }
+    else{
+        SalaDht.Refresh();
+        SalaTemperature = SalaDht.GetTemperature();
+        SalaHumidity = SalaDht.GetHumidity();
+    }
+    DhtAlternate = !DhtAlternate;
 
     CozinhaExaustorState = CozinhaExaustor.GetState();
     BuzzerState = Buzzer.GetState();
