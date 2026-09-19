@@ -1,11 +1,16 @@
 import json
 import os
 import time
+from collections import deque
+
 import serial
 import serial.tools.list_ports
 import paho.mqtt.client as mqtt
 
 SERIAL_BAUDRATE = 9600
+
+MQTT_ROOT_TOPIC = "maquete_inteligente"
+HEARTBEAT_TOPIC = f"{MQTT_ROOT_TOPIC}/status/online"
 
 MQTT_BROKER = os.getenv("MQTT_BROKER", "broker.mqtt.cool")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
@@ -79,10 +84,6 @@ def connect_serial():
         time.sleep(5)
 
 
-MQTT_ROOT_TOPIC = "maquete_inteligente"
-HEARTBEAT_TOPIC = f"{MQTT_ROOT_TOPIC}/status/online"
-
-
 def on_connect(client, userdata, flags, reason_code, properties=None):
     client.subscribe(f"{MQTT_ROOT_TOPIC}/#")
     client.publish(HEARTBEAT_TOPIC, json.dumps(True), retain=True)
@@ -99,10 +100,51 @@ def parse_boolean(value):
     return value
 
 
+class PendingCommandQueue:
+    def __init__(self):
+        self._queue = deque()
+
+    def enqueue(self, command):
+        self._queue.append(command)
+
+    def flush(self, write):
+        while self._queue:
+            pending = self._queue.popleft()
+            if not write(pending):
+                self._queue.appendleft(pending)
+                return
+
+    def __bool__(self):
+        return bool(self._queue)
+
+
 def main():
     client = connect_mqtt()
     ser = connect_serial()
-    state = {"ser": ser, "pending_command": None}
+    state = {"ser": ser, "pending_commands": PendingCommandQueue()}
+
+    def send_serial(command):
+        try:
+            state["ser"].write((json.dumps(command) + "\n").encode("utf-8"))
+            topic = next(iter(command))
+            print(f"Enviado para serial tópico={topic} mensagem={command[topic]}")
+            return True
+        except serial.SerialException as e:
+            print(f"Erro ao escrever na serial: {e}. Comando guardado para reconexão.")
+            state["pending_commands"].enqueue(command)
+            return False
+
+    def flush_pending():
+        def try_write(command):
+            try:
+                state["ser"].write((json.dumps(command) + "\n").encode("utf-8"))
+                print(f"Comando pendente enviado após reconexão: {command}")
+                return True
+            except serial.SerialException:
+                return False
+
+        if not state["pending_commands"].flush(try_write):
+            print("Falha ao enviar comando pendente. Devolvendo ao início da fila.")
 
     def on_message(client, userdata, msg):
         topic = msg.topic
@@ -116,13 +158,7 @@ def main():
             message = payload
 
         message = parse_boolean(message)
-        data = {topic: message}
-        try:
-            state["ser"].write((json.dumps(data) + "\n").encode("utf-8"))
-            print(f"Enviado para serial tópico={topic} mensagem={message}")
-        except serial.SerialException as e:
-            print(f"Erro ao escrever na serial: {e}. Comando guardado para reconexão.")
-            state["pending_command"] = data
+        send_serial({topic: message})
 
     client.on_message = on_message
 
@@ -147,14 +183,7 @@ def main():
                 ser.close()
                 ser = connect_serial()
                 state["ser"] = ser
-                pending = state.get("pending_command")
-                if pending is not None:
-                    try:
-                        ser.write((json.dumps(pending) + "\n").encode("utf-8"))
-                        print(f"Comando pendente enviado após reconexão: {pending}")
-                    except serial.SerialException as e:
-                        print(f"Falha ao enviar comando pendente: {e}")
-                    state["pending_command"] = None
+                flush_pending()
     except KeyboardInterrupt:
         print("\nEncerrando...")
     finally:

@@ -20,6 +20,18 @@ namespace{
     const uint16_t AlarmFrequency = 1000;
     const uint32_t DisplayPageInterval = 5000;
     const uint8_t DisplayPageCount = 4;
+    const uint32_t FeriasScheduleInterval = 60000;
+}
+
+bool ToBoolean(JsonVariantConst value){
+    if (value.is<bool>()){
+        return value.as<bool>();
+    }
+    const char* text = value.as<const char*>();
+    if (text != nullptr && strcmp_P(text, PSTR("true")) == 0){
+        return true;
+    }
+    return false;
 }
 
 bool ReadSegment(const char*& pos, char* out, uint8_t maxLen){
@@ -47,6 +59,21 @@ void ApplyLightRule(uint32_t now, float luminosity, uint32_t lastMotion, uint32_
     }
     else if (darkEnough || motionActive){
         led.TurnON();
+    }
+}
+
+void ApplyFeriasRule(uint32_t now, uint32_t manualUntil, uint8_t roomSeed, LedsClass& led){
+    if (now < manualUntil){
+        return;
+    }
+    uint32_t bucket = now / FeriasScheduleInterval;
+    uint16_t h = (uint16_t)(bucket * 2654435761u + roomSeed * 40503u);
+    bool on = (h >> 7) & 1u;
+    if (on){
+        led.TurnON();
+    }
+    else{
+        led.TurnOFF();
     }
 }
 
@@ -94,6 +121,7 @@ MaqueteClass::MaqueteClass()
     AlarmState = false;
     AlarmTriggered = false;
     BuzzerState = false;
+    FeriasState = false;
 
     SalaLuminosity = 0.0f;
     QuartoLuminosity = 0.0f;
@@ -127,6 +155,7 @@ MaqueteClass::MaqueteClass()
     LastAlarmState = false;
     LastAlarmTriggered = false;
     LastBuzzerState = false;
+    LastFeriasState = false;
 
     LastSalaLuminosity = 0.0f;
     LastQuartoLuminosity = 0.0f;
@@ -259,12 +288,22 @@ void MaqueteClass::ApplyRules(){
         PatioLastMotion = now;
     }
 
-    ApplyLightRule(now, SalaLuminosity, SalaLastMotion, SalaLedManualUntil, SalaLed);
-    ApplyLightRule(now, QuartoLuminosity, 0, QuartoLedManualUntil, QuartoLed);
-    ApplyLightRule(now, BanheiroLuminosity, 0, BanheiroLedManualUntil, BanheiroLed);
-    ApplyLightRule(now, CozinhaLuminosity, 0, CozinhaLedManualUntil, CozinhaLed);
-    ApplyLightRule(now, EscritorioLuminosity, 0, EscritorioLedManualUntil, EscritorioLed);
-    ApplyLightRule(now, GaragemLuminosity, GaragemLastMotion, GaragemLedManualUntil, GaragemLed);
+    if (FeriasState){
+        ApplyFeriasRule(now, SalaLedManualUntil, 0, SalaLed);
+        ApplyFeriasRule(now, QuartoLedManualUntil, 1, QuartoLed);
+        ApplyFeriasRule(now, BanheiroLedManualUntil, 2, BanheiroLed);
+        ApplyFeriasRule(now, CozinhaLedManualUntil, 3, CozinhaLed);
+        ApplyFeriasRule(now, EscritorioLedManualUntil, 4, EscritorioLed);
+        ApplyFeriasRule(now, GaragemLedManualUntil, 5, GaragemLed);
+    }
+    else{
+        ApplyLightRule(now, SalaLuminosity, SalaLastMotion, SalaLedManualUntil, SalaLed);
+        ApplyLightRule(now, QuartoLuminosity, 0, QuartoLedManualUntil, QuartoLed);
+        ApplyLightRule(now, BanheiroLuminosity, 0, BanheiroLedManualUntil, BanheiroLed);
+        ApplyLightRule(now, CozinhaLuminosity, 0, CozinhaLedManualUntil, CozinhaLed);
+        ApplyLightRule(now, EscritorioLuminosity, 0, EscritorioLedManualUntil, EscritorioLed);
+        ApplyLightRule(now, GaragemLuminosity, GaragemLastMotion, GaragemLedManualUntil, GaragemLed);
+    }
 
     if (now >= ExaustorManualUntil){
         if (CozinhaFumacaState){
@@ -318,7 +357,7 @@ void MaqueteClass::ProcessInbound(){
                 JsonDocument doc;
                 if (!deserializeJson(doc, CommandBuffer)){
                     for (JsonPair pair : doc.as<JsonObject>()){
-                        HandleCommand(pair.key().c_str(), pair.value().as<bool>());
+                        HandleCommand(pair.key().c_str(), ToBoolean(pair.value()));
                     }
                 }
             }
@@ -352,6 +391,10 @@ void MaqueteClass::HandleCommand(const char* topic, bool value){
     }
     if (strcmp_P(component, PSTR("alarme")) == 0){
         HandleAlarmCommand(value);
+        return;
+    }
+    if (strcmp_P(room, PSTR("principal")) == 0 && strcmp_P(component, PSTR("ferias")) == 0){
+        HandleFeriasCommand(value);
         return;
     }
     if (strcmp_P(room, PSTR("cozinha")) == 0 && strcmp_P(component, PSTR("exaustor")) == 0){
@@ -406,6 +449,10 @@ void MaqueteClass::HandleAlarmCommand(bool value){
         Buzzer.StopTone();
         BuzzerState = false;
     }
+}
+
+void MaqueteClass::HandleFeriasCommand(bool value){
+    FeriasState = value;
 }
 
 void MaqueteClass::HandlePortaCommand(bool value){
@@ -480,6 +527,7 @@ void MaqueteClass::PublishDelta(){
     PublishIfChanged(F("maquete_inteligente/principal/alarme/state"), AlarmState, LastAlarmState);
     PublishIfChanged(F("maquete_inteligente/principal/alarme/triggered"), AlarmTriggered, LastAlarmTriggered);
     PublishIfChanged(F("maquete_inteligente/principal/buzzer/state"), BuzzerState, LastBuzzerState);
+    PublishIfChanged(F("maquete_inteligente/principal/ferias/state"), FeriasState, LastFeriasState);
 }
 
 void MaqueteClass::PublishAllState(){
@@ -554,6 +602,8 @@ void MaqueteClass::PublishAllState(){
     LastAlarmTriggered = AlarmTriggered;
     PublishTopic(F("maquete_inteligente/principal/buzzer/state"), BuzzerState);
     LastBuzzerState = BuzzerState;
+    PublishTopic(F("maquete_inteligente/principal/ferias/state"), FeriasState);
+    LastFeriasState = FeriasState;
 }
 
 void MaqueteClass::PublishHeartbeat(){
@@ -649,6 +699,7 @@ void MaqueteClass::DrawSecurityPage(){
     PrintDisplayBool(4, "Sala:    ", SalaMovimentoState, "SIM", "NAO");
     PrintDisplayBool(5, "Garagem: ", GaragemMovimentoState, "SIM", "NAO");
     PrintDisplayBool(6, "Patio:   ", PatioMovimentoState, "SIM", "NAO");
+    PrintDisplayBool(7, "Ferias:  ", FeriasState, "ON", "OFF");
 }
 
 void MaqueteClass::DrawKitchenPage(){

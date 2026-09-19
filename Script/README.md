@@ -14,8 +14,9 @@ Firmware (Serial 9600, JSON por linha) ⇄ Script ⇄ Broker MQTT (maquete_intel
   é publicada no broker no respectivo tópico, com `retain=True` (os `state` sobrevivem a
   reinícios e o WebSite recupera os valores).
 - **MQTT → Serial**: mensagens recebidas em qualquer tópico `.../command` são enviadas para a
-  Serial no mesmo formato JSON, para o firmware executar. Se a Serial estiver desconectada, o
-  último comando fica pendente e é enviado assim que a conexão for restabelecida.
+  Serial no mesmo formato JSON, para o firmware executar. Se a Serial estiver desconectada, os
+  comandos ficam numa **fila FIFO** (`PendingCommandQueue`) e são enviados **em ordem** assim
+  que a conexão for restabelecida.
 - Detecta automaticamente a porta do Arduino por **VID/PID** (filtro), com retry em caso de falha.
 
 ## Como rodar
@@ -64,5 +65,6 @@ cai num fallback por descrição ("Arduino" ou "USB").
   ele substitui o firmware + este script. **Não rode os dois ao mesmo tempo** — publicam nos
   mesmos tópicos `state`.
 - O heartbeat do firmware (`maquete_inteligente/status/online`) é republicado **retido** em
-  `true` (no connect e a cada nova leitura). O Script usa **LWT** (`false` retido) e publica
-  `false` ao encerrar, para o WebSite marcar offline na hora.
+  `true` no connect e a cada heartbeat recebido da Serial (o firmware emite a cada 30s). O
+  Script usa **LWT** (`false` retido) e publica `false` ao encerrar, para o WebSite marcar
+  offline na hora.

@@ -31,6 +31,7 @@ class MaqueteClass{
         void HandlePortaCommand(bool value);
         void HandlePortaoCommand(bool value);
         void HandleAlarmCommand(bool value);
+        void HandleFeriasCommand(bool value);
         void SetPortaoPosition(int32_t target);
         void UpdateDisplay();
         void DrawSecurityPage();
@@ -93,6 +94,7 @@ class MaqueteClass{
         bool AlarmState;
         bool AlarmTriggered;
         bool BuzzerState;
+        bool FeriasState;
 
         float SalaLuminosity;
         float QuartoLuminosity;
@@ -126,6 +128,7 @@ class MaqueteClass{
         bool LastAlarmState;
         bool LastAlarmTriggered;
         bool LastBuzzerState;
+        bool LastFeriasState;
 
         float LastSalaLuminosity;
         float LastQuartoLuminosity;

@@ -1,0 +1,19 @@
+{
+  "name": "Maquete Inteligente",
+  "short_name": "Maquete",
+  "description": "Controle e monitoramento da maquete de casa inteligente",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1e1e2e",
+  "theme_color": "#1e1e2e",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

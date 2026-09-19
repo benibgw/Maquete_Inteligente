@@ -16,7 +16,7 @@ partes acontece por **MQTT**, com uma ponte **Serial**.
 | --- | --- |
 | **Firmware** | C++ · PlatformIO · Arduino Mega 2560 |
 | **Script** | Python 3 · paho-mqtt · pyserial |
-| **WebSite** | Python 3 · Flask · paho-mqtt · HTML/CSS/JavaScript |
+| **WebSite** | Python 3 · Flask · paho-mqtt · SQLite · HTML/CSS/JavaScript |
 | **Testes** | Python 3 · paho-mqtt (`Project_Test`) |
 | **Comunicação** | MQTT (broker) + Serial 9600 (JSON por linha) |
 
@@ -34,6 +34,7 @@ Pelo site, acessível do celular ou notebook, o usuário pode:
 - Abrir/fechar a porta da sala (servo) e o portão da garagem (motor de passo)
 - Ligar/desligar o exaustor da cozinha
 - Armar/desarmar o alarme
+- Ativar/desativar o **modo férias**
 
 ### Automações
 
@@ -46,7 +47,17 @@ Funções executadas continuamente pelo firmware a partir da leitura dos sensore
   após 30s.
 - **Segurança**: com o alarme armado, a detecção de presença dispara o alarme e o buzzer até ser
   desarmado.
+- **Modo férias**: simula ocupação da casa — as luzes dos cômodos acendem/apagam em padrão
+  determinístico para dar a impressão de que há movimento (agenda pseudo-aleatória, sem `random()`).
+
+### Recursos do WebSite e monitoramento
+
 - **Clima**: leitura contínua de temperatura e umidade (DHT11) da sala e do quarto.
+- **Linha do tempo de eventos**: o WebSite registra em SQLite as mudanças de sensores/estados e
+  os comandos enviados, exibida em um painel com filtros (tudo, alertas, sensores, comandos).
+- **Painel de testes no simulador**: botões na interface (ocultos: `#painel-teste` na URL ou
+  5 cliques na logo) forçam fumaça, movimento, disparo de alarme ou "carro no portão" — ideal
+  para validar alertas e automações sem mexer no hardware.
 
 ### Painel local
 
@@ -100,11 +111,14 @@ Firmware (Arduino Mega 2560, C++)
 - **Script** (`Script/main.py`): ponte entre a Serial e o Broker MQTT — repassa comandos ao
   firmware e publica o estado no broker (com `retain`).
 - **WebSite** (`WebSite/app.py`): assina os tópicos do broker, mantém o estado atualizado e
-  expõe a interface web de monitoramento e controle.
+  expõe a interface web de monitoramento e controle. Requer **login** (usuário/senha por
+  variáveis de ambiente), persiste o último estado, o **histórico** das leituras e a linha do
+  tempo de eventos em **SQLite** e envia **alertas** (toasts empilhados, som e notificação do
+  navegador) quando o alarme dispara ou há fumaça.
 - **Broker MQTT**: usado somente para testes (`broker.mqtt.cool`), será substituído por um
   broker real futuramente. O endereço/credenciais são configuráveis por variáveis de ambiente
-  (`MQTT_BROKER`, `MQTT_PORT`, `MQTT_USERNAME`, `MQTT_PASSWORD`) em todos os módulos —
-  para trocar para um broker local basta exportar as variáveis ao iniciar.
+  (`MQTT_BROKER`, `MQTT_PORT`, `MQTT_USERNAME`, `MQTT_PASSWORD`) no **Script**, no **WebSite** e
+  no **Project_Test** — para trocar para um broker local basta exportar as variáveis ao iniciar.
 
 ### Fluxo de um comando (ponta a ponta)
 
@@ -163,6 +177,7 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python app.py
 # abra http://localhost:5000
+# login padrão: WEB_USER=admin, WEB_PASSWORD=maquete (configuráveis por env)
 ```
 
 **Project_Test (simular sem a placa):**
@@ -194,11 +209,13 @@ Todos os tópicos usam o root `maquete_inteligente`:
 | `escritorio` | `led/state` (bool) · `ldr/luminosity` (0–100) |
 | `garagem` | `led/state` (bool) · `ldr/luminosity` (0–100) · `portao/state` (bool) · `portao/position` (0–50) · `hall/state` (bool) · `movimento/state` (bool) |
 | `patio` | `movimento/state` (bool) |
-| `principal` | `alarme/state` (bool) · `alarme/triggered` (bool) · `buzzer/state` (bool) |
+| `principal` | `alarme/state` (bool) · `alarme/triggered` (bool) · `buzzer/state` (bool) · `ferias/state` (bool) |
+| `test` | `fumaca` · `movimento` · `alarme` · `hall` — só `command` (aliases do painel de teste) |
 | `status` | `online` (bool) — heartbeat |
 
 Tópicos `command` (todos booleanos): `{sala,quarto,banheiro,cozinha,escritorio,garagem}/led`,
-`cozinha/exaustor`, `sala/porta`, `garagem/portao` e `principal/alarme`.
+`cozinha/exaustor`, `sala/porta`, `garagem/portao`, `principal/alarme`, `principal/ferias`
+e, no **project-test**, `test/{fumaca,movimento,alarme,hall}/command`.
 
 **Exemplo:** `maquete_inteligente/sala/led/state` (estado da luz) e
 `maquete_inteligente/sala/led/command` (ligar/desligar).
@@ -255,7 +272,19 @@ Correções e melhorias pendentes, priorizadas.
 ### Operacional
 - [x] Endurecer a detecção de porta serial no Script com filtro por VID/PID.
 - [x] Migrar o Script para `paho-mqtt` `CallbackAPIVersion.VERSION2`.
+- [x] Usar fila FIFO de comandos pendentes do Script (antes só um comando era guardado quando a Serial caía).
+- [x] Parse robusto de booleanos no firmware (aceita `bool` e strings `"true"`/`"false"`).
 - [ ] Implementar broker real com autenticação (hoje usa `broker.mqtt.cool` público, só para testes).
+
+### Recursos novos (ver detalhes no README do WebSite)
+- [x] Autenticação no WebSite — login/logout via env `WEB_USER`/`WEB_PASSWORD`/`SECRET_KEY`, todas as rotas e APIs protegidas.
+- [x] Persistência do estado + histórico de leituras em SQLite (`WebSite/data.db`, gitignored).
+- [x] Gráficos de histórico no painel (Chart.js via CDN) e endpoint `GET /api/history`.
+- [x] Alertas no site: toasts empilhados (canto inferior direito) + som (Web Audio) +
+      notificação do navegador, com botão de mudo.
+- [x] PWA (manifest + service worker) — instalação completa requer HTTPS.
+- [x] Modo férias em firmware, simulador e site — tópicos `principal/ferias/{state,command}`.
+- [x] Linha do tempo de eventos (SQLite + `GET /api/events`) e painel de testes do simulador (`test/*/command`).
 
 > **Notas das correções:**
 > - O cooler foi movido para o **pino 5** (Timer3). **Religar o fio do exaustor do pino 44 para o pino 5.**

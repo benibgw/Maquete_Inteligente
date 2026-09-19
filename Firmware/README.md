@@ -54,6 +54,9 @@ Firmware/
 
 - **Luzes**: escuro (< 20% de luz) liga; claro (> 50%) e sem presença desliga. Presença mantém
   a luz ligada por 30s. Comando manual do usuário sobrepõe por 60s.
+- **Modo férias**: com `principal/ferias/state = true`, as luzes dos cômodos seguem um padrão
+  determinístico (agenda pseudo-aleatória sem `random()`, baseada em `millis()`) para simular
+  ocupação; comando manual continua sobrepondo por 60s. Ao desativar, voltam as regras normais.
 - **Exaustor**: liga enquanto houver fumaça (MQ-2) e desliga quando passa; comando manual
   sobrepõe por 60s.
 - **Portão**: o sensor Hall (KY-003) abre o portão ao detectar ímã (carro), que fecha
@@ -73,7 +76,11 @@ Comandos recebidos seguem o mesmo formato no tópico `/command`, ex.:
 
 ```json
 {"maquete_inteligente/sala/led/command":true}
+{"maquete_inteligente/principal/ferias/command":true}
 ```
+
+O valor booleano é interpretado de forma tolerante: aceita `true`/`false` (JSON) ou as strings
+`"true"`/`"false"`; qualquer outro valor é tratado como `false`.
 
 O boot publica o estado completo; depois os updates são por mudança
 (`PublishIfChanged`, com tolerância 0.1 para valores float). Heartbeat em
@@ -109,3 +116,4 @@ Dependências (`platformio.ini`):
   use `MC38Class(pin, false)` para `HIGH` = porta aberta (padrão é `true`).
 - O servo inicia em 0° no boot.
 - A página do display (SSD1306) alterna a cada 5s entre: Segurança, Cozinha, Ambiente e Acessos.
+  A página **Segurança** também indica o estado do **modo férias** (linha inferior).

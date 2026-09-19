@@ -3,9 +3,24 @@ import os
 import queue
 import threading
 import time
+from functools import wraps
 
 import paho.mqtt.client as mqtt
-from flask import Flask, Response, jsonify, render_template, request, stream_with_context
+from flask import (
+    Flask,
+    Response,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    stream_with_context,
+    url_for,
+)
+from werkzeug.security import check_password_hash, generate_password_hash
+
+import db
 
 MQTT_BROKER = os.getenv("MQTT_BROKER", "broker.mqtt.cool")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
@@ -17,15 +32,24 @@ ONLINE_TIMEOUT = float(os.getenv("ONLINE_TIMEOUT", 40.0))
 
 WEB_HOST = os.getenv("WEB_HOST", "0.0.0.0")
 WEB_PORT = int(os.getenv("WEB_PORT", 5000))
+WEB_USER = os.getenv("WEB_USER", "admin")
+WEB_PASSWORD = os.getenv("WEB_PASSWORD", "maquete")
+SECRET_KEY = os.getenv("SECRET_KEY", "maquete-secret-key")
 
 SSE_KEEPALIVE = 5.0
 
 app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
+app.secret_key = SECRET_KEY
+
+PASSWORD_HASH = generate_password_hash(WEB_PASSWORD)
 
 state_lock = threading.Lock()
 state = {}
 last_heartbeat = 0.0
+
+state.update(db.load_state())
+db.prune_old_data()
 
 try:
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
@@ -72,15 +96,33 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
 
 def on_message(client, userdata, msg):
     global last_heartbeat
+
+    if msg.topic.startswith(f"{MQTT_ROOT_TOPIC}/test/"):
+        return
+
     try:
         value = json.loads(msg.payload.decode("utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError):
         value = msg.payload.decode("utf-8", errors="ignore")
 
+    previous = None
     with state_lock:
+        previous = state.get(msg.topic)
         state[msg.topic] = value
         if msg.topic == STATUS_TOPIC and value is True:
             last_heartbeat = time.time()
+
+    if (
+        isinstance(value, bool)
+        and previous is not None
+        and previous != value
+        and not msg.topic.endswith("/command")
+    ):
+        db.record_event(msg.topic, value, "state")
+
+    if msg.topic != STATUS_TOPIC and not msg.topic.endswith("/command"):
+        db.save_state(msg.topic, value)
+    db.record_reading(msg.topic, value)
 
     broadcast(msg.topic, value)
 
@@ -103,17 +145,87 @@ def start_mqtt():
     thread.start()
 
 
+def login_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not session.get("logged_in"):
+            if request.path.startswith("/api/"):
+                return jsonify({"ok": False, "error": "nao autenticado"}), 401
+            return redirect(url_for("login"))
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if session.get("logged_in"):
+        return redirect(url_for("index"))
+
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        if username == WEB_USER and check_password_hash(PASSWORD_HASH, password):
+            session["logged_in"] = True
+            return redirect(url_for("index"))
+        flash("Usuário ou senha inválidos.", "error")
+
+    return render_template("login.html")
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
 @app.route("/")
+@login_required
 def index():
     return render_template("index.html")
 
 
 @app.route("/api/state")
+@login_required
 def api_state():
     return jsonify(build_snapshot())
 
 
+@app.route("/api/history")
+@login_required
+def api_history():
+    topic = request.args.get("topic", "")
+    if not topic.startswith(f"{MQTT_ROOT_TOPIC}/"):
+        return jsonify({"ok": False, "error": "topic invalido"}), 400
+    try:
+        limit = min(max(int(request.args.get("limit", 120)), 1), 2000)
+    except ValueError:
+        limit = 120
+    try:
+        since = float(request.args.get("since", 0) or 0)
+    except ValueError:
+        since = 0
+    points = db.get_history(topic, limit=limit, since=since)
+    return jsonify({"ok": True, "topic": topic, "points": points})
+
+
+@app.route("/api/events")
+@login_required
+def api_events():
+    try:
+        limit = min(max(int(request.args.get("limit", 50)), 1), 500)
+    except ValueError:
+        limit = 50
+    try:
+        since = float(request.args.get("since", 0) or 0)
+    except ValueError:
+        since = 0
+    events = db.get_events(limit=limit, since=since)
+    return jsonify({"ok": True, "events": events})
+
+
 @app.route("/api/stream")
+@login_required
 def api_stream():
     sub = queue.Queue(maxsize=64)
     with subscribers_lock:
@@ -140,6 +252,7 @@ def api_stream():
 
 
 @app.route("/api/command", methods=["POST"])
+@login_required
 def api_command():
     data = request.get_json(silent=True) or {}
     topic = data.get("topic")
@@ -153,6 +266,7 @@ def api_command():
         return jsonify({"ok": False, "error": "valor invalido"}), 400
 
     client.publish(topic, json.dumps(value), qos=1)
+    db.record_event(topic, value, "command")
     return jsonify({"ok": True})
 
 

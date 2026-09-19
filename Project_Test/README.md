@@ -17,13 +17,22 @@ Serve para testar a integração WebSite ↔ MQTT sem a placa e a fiação conec
   - `sala/porta/command` → abre/fecha a porta (anima o ângulo do servo)
   - `garagem/portao/command` → abre/fecha o portão (anima a posição)
   - `principal/alarme/command` → arma/desarma (desarmar limpa disparo e buzzer)
+  - `principal/ferias/command` → liga/desliga o **modo férias** (luzes dos cômodos oscilam em
+    padrão determinístico simulando ocupação, respeitando override manual)
+  - `test/fumaca/command` → fumaça na cozinha por **10s** (percentual 75 → alerta)
+  - `test/movimento/command` → pulso de **movimento em todos os sensores** (~4s)
+  - `test/alarme/command` → **dispara o alarme** mesmo desarmado (até desarmar via
+    `principal/alarme/command`)
+  - `test/hall/command` → **carro no portão** (abre o portão, que fecha sozinho após ~8s)
+- Os tópicos `test/*` existem para o **painel de testes** da interface e não afetam o firmware real.
 - Roda um cenário automático contínuo:
   - Temperatura e umidade dos DHT11 oscilando suavemente.
   - Luminosidade dos LDRs em ciclo (dia/noite) com regra automática de luzes.
   - Presença intermitente em sala, garagem e pátio.
   - Evento de fumaça na cozinha a cada ~45s (sobe a ~75%, aciona o exaustor e decai).
   - Evento de hall: portão abre sozinho e fecha após 30s.
-  - Alarme armado + presença → `triggered` e buzzer disparado.
+  - Alarme **armado pelo usuário** (ou pelo painel de testes) + presença → `triggered` e buzzer
+    disparado; o simulador só aplica a regra quando armado.
 
 ## Como usar
 

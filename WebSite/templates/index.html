@@ -7,6 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <meta name="theme-color" content="#1e1e2e">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -21,8 +23,15 @@
     <div class="header-status">
       <span id="last-update" class="badge muted">--:--:--</span>
       <span id="connection" class="badge offline">offline</span>
+      <div class="header-actions">
+        <span id="vacation-toggle" class="badge muted" title="Modo férias: simula presença na casa">Férias: OFF</span>
+        <span id="sound-toggle" class="badge muted" title="Som dos alertas">Som: ON</span>
+        <button id="logout-btn" class="ghost logout-btn" title="Sair da conta">Sair</button>
+      </div>
     </div>
   </header>
+
+  <div id="alert-stack" class="alert-stack"></div>
 
   <main>
     <section class="card span2" id="card-security">
@@ -137,6 +146,57 @@
       </div>
       <div class="rooms" id="rooms-grid"></div>
     </section>
+
+    <section class="card span2 test-panel" id="card-test-panel" hidden>
+      <div class="card-head">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 2v6a2 2 0 0 1-2 2H2"/>
+          <path d="M9 2v6a2 2 0 0 0 2 2h5"/>
+          <path d="M22 9h-5a2 2 0 0 0-2 2v2a2 2 0 0 1-2 2H9a2 2 0 0 0-2 2v3"/>
+          <path d="M2 13h6a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h2"/>
+          <path d="M17 17h.01M20 17h.01"/>
+        </svg>
+        <h2>Simulador · Testes</h2>
+      </div>
+      <p class="panel-hint">Força eventos de sensor para testar alertas, automações e a linha do tempo.
+        Vale apenas quando o <strong>simulador</strong> é a fonte (não afeta física da maquete).</p>
+      <div class="actions">
+        <button id="test-smoke">Fumaça (10s)</button>
+        <button id="test-motion" class="ghost">Movimento</button>
+        <button id="test-alarm" class="ghost">Disparar alarme</button>
+        <button id="test-hall" class="ghost">Carro no portão</button>
+      </div>
+    </section>
+
+    <section class="card history-panel" id="card-timeline">
+      <div class="card-head">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 8v4l3 3"/>
+          <circle cx="12" cy="12" r="9"/>
+        </svg>
+        <h2>Linha do tempo</h2>
+      </div>
+      <div class="chips" id="timeline-chips">
+        <button class="chip active" data-filter="all">Tudo</button>
+        <button class="chip" data-filter="alert">Alertas</button>
+        <button class="chip" data-filter="sensor">Sensores</button>
+        <button class="chip" data-filter="command">Comandos</button>
+      </div>
+      <ul class="timeline" id="timeline-list">
+        <li class="timeline-row"><span class="timeline-na">Carregando...</span></li>
+      </ul>
+    </section>
+
+    <section class="card history-panel">
+      <div class="card-head">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v18h18"/>
+          <path d="m19 9-5 5-4-4-3 3"/>
+        </svg>
+        <h2>Histórico</h2>
+      </div>
+      <div class="history-grid" id="history-grid"></div>
+    </section>
   </main>
 
   <footer>
@@ -162,6 +222,7 @@
     </div>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>

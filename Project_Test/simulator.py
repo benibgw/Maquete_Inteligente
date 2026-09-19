@@ -17,6 +17,9 @@ GATE_CLOSE_DELAY = 30000
 DOOR_OPEN_ANGLE = 90
 GATE_OPEN_POSITION = 50
 GATE_CLOSE_POSITION = 0
+TEST_FUMACA_MS = 10000
+TEST_HALL_CLOSE_MS = 8000
+TEST_MOTION_MS = 4000
 
 TICK_MS = 1000
 HEARTBEAT_INTERVAL = 30000
@@ -62,6 +65,8 @@ manual_until = {
     "cozinha/exaustor": 0,
 }
 hall_until = 0
+test_until = {}
+test_force_alarm = False
 
 
 def full_topic(suffix):
@@ -115,6 +120,7 @@ def parse_boolean(value):
 
 
 def on_message(client, userdata, msg):
+    global door_target, gate_target, gate_close_at, test_force_alarm, hall_until
     try:
         value = parse_boolean(json.loads(msg.payload.decode("utf-8")))
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -141,11 +147,9 @@ def on_message(client, userdata, msg):
         publish_changed(suffix, state[suffix])
         print(f"Comando recebido: {msg.topic} -> exaustor {'ligado' if value else 'desligado'}")
     elif room == "sala" and component == "porta":
-        global door_target
         door_target = DOOR_OPEN_ANGLE if value else 0
         print(f"Comando recebido: {msg.topic} -> porta {'abrindo' if value else 'fechando'}")
     elif room == "garagem" and component == "portao":
-        global gate_target, gate_close_at
         gate_close_at = 0
         gate_target = GATE_OPEN_POSITION if value else GATE_CLOSE_POSITION
         print(f"Comando recebido: {msg.topic} -> portão {'abrindo' if value else 'fechando'}")
@@ -154,11 +158,57 @@ def on_message(client, userdata, msg):
         state[suffix] = bool(value)
         publish_changed(suffix, state[suffix])
         if not value:
+            test_force_alarm = False
             state["principal/alarme/triggered"] = False
             state["principal/buzzer/state"] = False
             publish_changed("principal/alarme/triggered", False)
             publish_changed("principal/buzzer/state", False)
         print(f"Comando recebido: {msg.topic} -> alarme {'armado' if value else 'desarmado'}")
+    elif room == "principal" and component == "ferias":
+        suffix = "principal/ferias/state"
+        state[suffix] = bool(value)
+        publish_changed(suffix, state[suffix])
+        print(f"Comando recebido: {msg.topic} -> modo férias {'ligado' if value else 'desligado'}")
+    elif room == "test":
+        if component == "fumaca" and value:
+            test_until["fumaca"] = now + TEST_FUMACA_MS
+            state["cozinha/fumaca/percentage"] = 75.0
+            state["cozinha/fumaca/state"] = True
+            print(f"Comando recebido: {msg.topic} -> fumaça de teste ligada (10s)")
+        elif component == "fumaca" and not value:
+            test_until.pop("fumaca", None)
+            state["cozinha/fumaca/percentage"] = 0.0
+            state["cozinha/fumaca/state"] = False
+        elif component == "movimento" and value:
+            for sensor in MOTION_SENSORS:
+                state[f"{sensor}/movimento/state"] = True
+                motion_until[sensor] = now + TEST_MOTION_MS
+                last_motion[sensor] = now
+            print(f"Comando recebido: {msg.topic} -> movimento de teste em todos os sensores")
+        elif component == "movimento" and not value:
+            for sensor in MOTION_SENSORS:
+                state[f"{sensor}/movimento/state"] = False
+                motion_until[sensor] = 0
+        elif component == "alarme" and value:
+            test_force_alarm = True
+            state["principal/alarme/triggered"] = True
+            state["principal/buzzer/state"] = True
+            print(f"Comando recebido: {msg.topic} -> alarme de teste disparado")
+        elif component == "alarme" and not value:
+            test_force_alarm = False
+            state["principal/alarme/triggered"] = False
+            state["principal/buzzer/state"] = False
+        elif component == "hall" and value:
+            state["garagem/hall/state"] = True
+            hall_until = now + 1500
+            gate_target = GATE_OPEN_POSITION
+            gate_close_at = now + TEST_HALL_CLOSE_MS
+            print(f"Comando recebido: {msg.topic} -> carro de teste no portão")
+        elif component == "hall" and not value:
+            state["garagem/hall/state"] = False
+            hall_until = 0
+            gate_target = GATE_CLOSE_POSITION
+            gate_close_at = 0
 
 
 def animate(value, target, step):
@@ -258,7 +308,6 @@ def update_gate_and_door(now):
         next_hall_event_ms = now + random.randint(60000, 120000)
 
     position = int(state["garagem/portao/position"])
-    state["garagem/hall/state"] = (hall_until != 0)
     position = animate(position, gate_target, 5)
     state["garagem/portao/position"] = position
     state["garagem/portao/state"] = position > GATE_OPEN_POSITION / 2
@@ -275,7 +324,7 @@ def update_gate_and_door(now):
 
 def update_alarm_and_buzzer(now):
     armed = state["principal/alarme/state"]
-    if not armed:
+    if not armed and not test_force_alarm:
         state["principal/alarme/triggered"] = False
         state["principal/buzzer/state"] = False
         return
@@ -286,6 +335,26 @@ def update_alarm_and_buzzer(now):
 
     if state["principal/alarme/triggered"]:
         state["principal/buzzer/state"] = True
+
+
+def update_ferias(now):
+    if not state["principal/ferias/state"]:
+        return
+    bucket = int(now // 60000)
+    for room in ROOMS:
+        if now < manual_until.get(f"{room}/led", 0):
+            continue
+        seed = ROOMS.index(room) * 40503
+        h = (bucket * 2654435761 + seed) & 0xFFFF
+        state[f"{room}/led/state"] = bool((h >> 7) & 1)
+
+
+def update_test_timers(now):
+    if "fumaca" in test_until and now >= test_until["fumaca"]:
+        del test_until["fumaca"]
+        state["cozinha/fumaca/percentage"] = 0.0
+        state["cozinha/fumaca/state"] = False
+        print("Fumaça de teste desligada automaticamente")
 
 
 def init_state():
@@ -308,6 +377,7 @@ def init_state():
     state["principal/alarme/state"] = False
     state["principal/alarme/triggered"] = False
     state["principal/buzzer/state"] = False
+    state["principal/ferias/state"] = False
 
 
 def main(args):
@@ -356,6 +426,8 @@ def main(args):
                 update_smoke_and_exaustor(now)
                 update_gate_and_door(now)
                 update_alarm_and_buzzer(now)
+                update_ferias(now)
+                update_test_timers(now)
 
                 for suffix, value in state.items():
                     publish_changed(suffix, value)
