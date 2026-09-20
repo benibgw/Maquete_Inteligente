@@ -1205,33 +1205,9 @@ footer a:hover {
   margin: 0;
 }
 
-.summary-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
 .summary-na {
   color: var(--muted);
   font-size: 0.85rem;
-}
-
-.summary-chip {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 14px;
-  background: rgba(17, 17, 27, 0.45);
-  border: 1px solid var(--card-border);
-  border-left: 3px solid var(--accent);
-  border-radius: 12px;
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-
-.summary-chip strong {
-  color: var(--text);
-  font-weight: 600;
 }
 
 /* ---------- Maquete 3D ---------- */

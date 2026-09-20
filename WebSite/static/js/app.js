@@ -1027,23 +1027,42 @@ function fmtNumber(value, digits) {
   return value === null || value === undefined ? "—" : Number(value).toFixed(digits || 0);
 }
 
+function summaryRow(label, value) {
+  const row = document.createElement("div");
+  row.className = "row";
+  const labelEl = document.createElement("span");
+  labelEl.textContent = label;
+  const valueEl = document.createElement("strong");
+  valueEl.textContent = value;
+  row.appendChild(labelEl);
+  row.appendChild(valueEl);
+  return row;
+}
+
 function renderSummary(summary) {
-  const box = document.getElementById("summary-chips");
+  const box = document.getElementById("summary-rows");
   if (!box) return;
 
-  let html = "";
+  box.innerHTML = "";
+
   for (const group of SUMMARY_GROUPS) {
     const temp = summary.sensors[group.temp];
     const humidity = summary.sensors[group.humidity];
-    html += `
-      <span class="summary-chip">
-        <strong>${group.title}</strong>
-        Temp ${fmtNumber(temp?.max, 1)}°C máx · ${fmtNumber(temp?.min, 1)}°C mín · agora ${fmtNumber(temp?.avg, 1)}
-        · Umid ${fmtNumber(humidity?.max, 0)}% máx
-      </span>`;
+
+    const tempText =
+      temp && temp.count > 0
+        ? `agora ${fmtNumber(temp.avg, 1)} · máx ${fmtNumber(temp.max, 1)} · mín ${fmtNumber(temp.min, 1)} °C`
+        : "—";
+    const humiText =
+      humidity && humidity.count > 0 ? `máx ${fmtNumber(humidity.max, 0)}%` : "—";
+
+    box.appendChild(summaryRow(`Temp · ${group.title}`, tempText));
+    box.appendChild(summaryRow(`Umid · ${group.title}`, humiText));
   }
 
   const smoke = summary.sensors[`${topic("cozinha/fumaca/percentage")}`];
+  const smokeText = smoke && smoke.count > 0 ? `máx ${fmtNumber(smoke.max, 0)}%` : "—";
+
   const alerts = Object.entries(summary.events)
     .filter(([key]) => key.startsWith("alert:"))
     .reduce((acc, [, count]) => acc + count, 0);
@@ -1051,16 +1070,13 @@ function renderSummary(summary) {
     .filter(([key]) => key.startsWith("command:"))
     .reduce((acc, [, count]) => acc + count, 0);
 
-  html += `
-    <span class="summary-chip"><strong>Fumaça (cozinha)</strong> máximo ${fmtNumber(smoke?.max, 0)}%</span>
-    <span class="summary-chip"><strong>Alertas hoje</strong> ${alerts}</span>
-    <span class="summary-chip"><strong>Comandos hoje</strong> ${commands}</span>`;
-
-  box.innerHTML = html || '<span class="summary-na">Sem dados hoje.</span>';
+  box.appendChild(summaryRow("Fumaça (cozinha)", smokeText));
+  box.appendChild(summaryRow("Alertas hoje", String(alerts)));
+  box.appendChild(summaryRow("Comandos hoje", String(commands)));
 }
 
 async function loadSummary() {
-  const box = document.getElementById("summary-chips");
+  const box = document.getElementById("summary-rows");
   if (!box) return;
   try {
     const response = await fetch("/api/summary");
