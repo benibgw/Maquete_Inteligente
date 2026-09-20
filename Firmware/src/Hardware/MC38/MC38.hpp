@@ -8,4 +8,7 @@ class MC38Class{
     private:
         uint8_t Pin;
         bool ActiveHigh;
+        bool PendingState;
+        bool DebouncedState;
+        uint32_t PendingSince;
 };

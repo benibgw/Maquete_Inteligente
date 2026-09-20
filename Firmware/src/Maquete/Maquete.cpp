@@ -210,6 +210,8 @@ void MaqueteClass::Update(){
 
     ProcessInbound();
 
+    UpdateFastSensors();
+
     GaragemPortaoMotor.Update();
 
     if (now - LastSensorRead >= SensorReadInterval){
@@ -227,6 +229,12 @@ void MaqueteClass::Update(){
         LastHeartbeat = now;
         PublishHeartbeat();
     }
+}
+
+void MaqueteClass::UpdateFastSensors(){
+    SalaPortaSensor.GetState();
+    GaragemPortaoSensor.GetState();
+    GaragemHall.GetState();
 }
 
 void MaqueteClass::RefreshSensorState(){

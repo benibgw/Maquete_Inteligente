@@ -7,4 +7,7 @@ class KY003Class{
         bool GetState();
     private:
         uint8_t Pin;
+        bool PendingState;
+        bool DebouncedState;
+        uint32_t PendingSince;
 };

@@ -6,6 +6,7 @@ import time
 
 DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.db"))
 HISTORY_RETENTION_DAYS = float(os.getenv("HISTORY_RETENTION_DAYS", 7))
+PRUNE_INTERVAL = float(os.getenv("PRUNE_INTERVAL", 3600))
 
 _lock = threading.Lock()
 _conn = None
@@ -45,6 +46,19 @@ def _init_schema(conn):
         """
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_ts ON events (ts)")
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS schedules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            label TEXT NOT NULL,
+            time TEXT NOT NULL,
+            topic TEXT NOT NULL,
+            value INTEGER NOT NULL,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            last_run_date TEXT
+        )
+        """
+    )
     conn.commit()
 
 
@@ -145,6 +159,15 @@ def get_events(limit=50, since=0.0):
         return []
 
 
+def start_prune_thread():
+    def worker():
+        while True:
+            time.sleep(PRUNE_INTERVAL)
+            prune_old_data()
+
+    threading.Thread(target=worker, daemon=True).start()
+
+
 def prune_old_data(now=None):
     global _last_prune
     now = now if now is not None else time.time()
@@ -187,3 +210,114 @@ def get_history(topic, limit=120, since=0.0):
     except sqlite3.Error as error:
         print(f"Erro ao ler histórico: {error}")
         return []
+
+
+def add_schedule(label, time_str, topic, value):
+    try:
+        conn = get_conn()
+        with _lock:
+            cursor = conn.execute(
+                "INSERT INTO schedules (label, time, topic, value) VALUES (?, ?, ?, ?)",
+                (label, time_str, topic, int(bool(value))),
+            )
+            conn.commit()
+            return cursor.lastrowid
+    except sqlite3.Error as error:
+        print(f"Erro ao adicionar agendamento: {error}")
+        return None
+
+
+def list_schedules():
+    try:
+        conn = get_conn()
+        with _lock:
+            rows = conn.execute(
+                "SELECT id, label, time, topic, value, enabled, last_run_date "
+                "FROM schedules ORDER BY time"
+            ).fetchall()
+        return [
+            {
+                "id": row[0],
+                "label": row[1],
+                "time": row[2],
+                "topic": row[3],
+                "value": bool(row[4]),
+                "enabled": bool(row[5]),
+                "last_run_date": row[6],
+            }
+            for row in rows
+        ]
+    except sqlite3.Error as error:
+        print(f"Erro ao listar agendamentos: {error}")
+        return []
+
+
+def update_schedule(schedule_id, **fields):
+    allowed = {
+        "label": "label",
+        "time": "time",
+        "topic": "topic",
+        "value": "value",
+        "enabled": "enabled",
+        "last_run_date": "last_run_date",
+    }
+    sets = []
+    values = []
+    for key, column in allowed.items():
+        if key in fields:
+            sets.append(f"{column} = ?")
+            values.append(fields[key])
+    if not sets:
+        return False
+    values.append(schedule_id)
+    try:
+        conn = get_conn()
+        with _lock:
+            conn.execute(f"UPDATE schedules SET {', '.join(sets)} WHERE id = ?", values)
+            conn.commit()
+            return True
+    except sqlite3.Error as error:
+        print(f"Erro ao atualizar agendamento: {error}")
+        return False
+
+
+def delete_schedule(schedule_id):
+    try:
+        conn = get_conn()
+        with _lock:
+            conn.execute("DELETE FROM schedules WHERE id = ?", (schedule_id,))
+            conn.commit()
+            return True
+    except sqlite3.Error as error:
+        print(f"Erro ao excluir agendamento: {error}")
+        return False
+
+
+def get_daily_summary():
+    now = time.localtime()
+    day_start = time.mktime((now.tm_year, now.tm_mon, now.tm_mday, 0, 0, 0, 0, 0, -1))
+    result = {"day_start": day_start, "sensors": {}, "events": {}}
+    try:
+        conn = get_conn()
+        with _lock:
+            rows = conn.execute(
+                "SELECT topic, COUNT(*), MIN(value), MAX(value), "
+                "AVG(value) FROM readings WHERE ts >= ? GROUP BY topic",
+                (day_start,),
+            ).fetchall()
+            event_rows = conn.execute(
+                "SELECT kind, topic, COUNT(*) FROM events WHERE ts >= ? GROUP BY kind, topic",
+                (day_start,),
+            ).fetchall()
+        for topic, count, minv, maxv, avgv in rows:
+            result["sensors"][topic] = {
+                "count": count,
+                "min": minv,
+                "max": maxv,
+                "avg": avgv,
+            }
+        for kind, topic, count in event_rows:
+            result["events"][f"{kind}:{topic}"] = count
+    except sqlite3.Error as error:
+        print(f"Erro ao gerar resumo diário: {error}")
+    return result

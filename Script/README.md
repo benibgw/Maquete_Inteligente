@@ -54,6 +54,9 @@ cai num fallback por descrição ("Arduino" ou "USB").
 ## Fluxo de dados
 
 1. Conecta (com retry de 5s) ao broker MQTT e se inscreve em `maquete_inteligente/#`.
+   Usa **sessão persistente** (`client_id=maquete-script`, `clean_session=False`): comandos QoS1
+   publicados pelo site enquanto o Script está desconectado do broker são enfileirados e entregues
+   na reconexão (complementando a `PendingCommandQueue`, que cobre apenas a Serial caída).
 2. Conecta à Serial do Arduino (retry de 5s se a porta não for encontrada).
 3. Loop principal: lê linhas da Serial e publica no broker; `on_message` roteia comandos
    para a Serial.

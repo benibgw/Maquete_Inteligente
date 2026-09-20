@@ -101,6 +101,18 @@ async function sendCommand(topicName, val) {
   }
 }
 
+async function sendScene(name) {
+  try {
+    await fetch("/api/scene", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scene: name }),
+    });
+  } catch (error) {
+    console.error("Falha ao executar cena", error);
+  }
+}
+
 function buildRooms() {
   const grid = document.getElementById("rooms-grid");
   if (!grid) return;
@@ -219,6 +231,7 @@ function render(data) {
   setStatus("motion-patio", value("patio/movimento/state"), "SIM", "NAO", "state-alert");
 
   updateRooms();
+  updateFloorPlan();
 
   updateVacationToggle();
   checkAlerts();
@@ -236,6 +249,13 @@ function bindControls() {
   bind("door-close", topic("sala/porta/command"), false);
   bind("gate-open", topic("garagem/portao/command"), true);
   bind("gate-close", topic("garagem/portao/command"), false);
+
+  const bindScene = (id, name) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("click", () => sendScene(name));
+  };
+  bindScene("scene-leave", "sair");
+  bindScene("scene-arrive", "chegar");
 
   const exhaust = document.getElementById("exhaust-toggle");
   if (exhaust) {
@@ -327,10 +347,19 @@ async function loadHistory() {
     if (!historyCharts[group.title]) {
       const box = document.createElement("div");
       box.className = "history-chart";
+      const header = document.createElement("div");
+      header.className = "history-head";
       const title = document.createElement("h3");
       title.textContent = group.title;
+      const csvLink = document.createElement("a");
+      csvLink.className = "csv-link";
+      csvLink.href = `/api/export/readings.csv?topic=${encodeURIComponent(group.series[0].topic)}`;
+      csvLink.download = "";
+      csvLink.textContent = "CSV";
       const canvas = document.createElement("canvas");
-      box.appendChild(title);
+      header.appendChild(title);
+      header.appendChild(csvLink);
+      box.appendChild(header);
       box.appendChild(canvas);
       grid.appendChild(box);
       historyCharts[group.title] = { group, canvas, chart: null };
@@ -798,6 +827,284 @@ function setupTestPanelSecret() {
   });
 }
 
+/* ---------- Agendamentos ---------- */
+
+const SCHEDULE_ACTIONS = [
+  { topic: "sala/led", label: "Luz da sala" },
+  { topic: "quarto/led", label: "Luz do quarto" },
+  { topic: "banheiro/led", label: "Luz do banheiro" },
+  { topic: "cozinha/led", label: "Luz da cozinha" },
+  { topic: "escritorio/led", label: "Luz do escritorio" },
+  { topic: "garagem/led", label: "Luz da garagem" },
+  { topic: "cozinha/exaustor", label: "Exaustor" },
+  { topic: "sala/porta", label: "Porta da sala" },
+  { topic: "garagem/portao", label: "Portão da garagem" },
+  { topic: "principal/alarme", label: "Alarme" },
+  { topic: "principal/ferias", label: "Modo férias" },
+];
+
+function scheduleCommandTopic(actionTopic) {
+  return topic(`${actionTopic}/command`);
+}
+
+function buildScheduleSelect() {
+  const select = document.getElementById("sched-topic");
+  if (!select) return;
+  SCHEDULE_ACTIONS.forEach((action) => {
+    const option = document.createElement("option");
+    option.value = scheduleCommandTopic(action.topic);
+    option.textContent = action.label;
+    select.appendChild(option);
+  });
+}
+
+function scheduleRowLabel(actionTopic) {
+  const match = SCHEDULE_ACTIONS.find((a) => scheduleCommandTopic(a.topic) === actionTopic);
+  return match ? match.label : actionTopic;
+}
+
+function renderSchedules(schedules) {
+  const list = document.getElementById("schedules-list");
+  if (!list) return;
+  if (!schedules.length) {
+    list.innerHTML = '<li class="schedules-na">Nenhum agendamento ainda.</li>';
+    return;
+  }
+
+  list.innerHTML = "";
+  schedules.forEach((s) => {
+    const li = document.createElement("li");
+    li.className = "schedule-row" + (s.enabled ? "" : " disabled");
+
+    const info = document.createElement("div");
+    info.className = "schedule-info";
+    const name = document.createElement("strong");
+    name.textContent = s.label;
+    const detail = document.createElement("span");
+    detail.textContent = `${s.time} · ${scheduleRowLabel(s.topic)} ${s.value ? "ON" : "OFF"}`;
+    info.appendChild(name);
+    info.appendChild(detail);
+
+    const toggle = document.createElement("label");
+    toggle.className = "toggle";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = s.enabled;
+    checkbox.setAttribute("aria-label", "Ativar agendamento");
+    checkbox.addEventListener("change", () => {
+      fetch(`/api/schedules/${s.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: checkbox.checked }),
+      }).then(loadSchedules);
+    });
+    const track = document.createElement("span");
+    track.className = "track";
+    toggle.appendChild(checkbox);
+    toggle.appendChild(track);
+
+    const remove = document.createElement("button");
+    remove.className = "ghost remove-btn";
+    remove.textContent = "Excluir";
+    remove.addEventListener("click", () => {
+      fetch(`/api/schedules/${s.id}`, { method: "DELETE" }).then(loadSchedules);
+    });
+
+    li.appendChild(info);
+    li.appendChild(toggle);
+    li.appendChild(remove);
+    list.appendChild(li);
+  });
+}
+
+async function loadSchedules() {
+  try {
+    const response = await fetch("/api/schedules");
+    if (response.status === 401) {
+      redirectToLogin();
+      return;
+    }
+    if (!response.ok) return;
+    const data = await response.json();
+    if (data.ok) renderSchedules(data.schedules || []);
+  } catch (error) {
+    // mantém a última lista
+  }
+}
+
+function setupScheduleForm() {
+  const add = document.getElementById("sched-add");
+  if (!add) return;
+  add.addEventListener("click", async () => {
+    const label = document.getElementById("sched-label").value.trim();
+    const timeStr = document.getElementById("sched-time").value;
+    const topicName = document.getElementById("sched-topic").value;
+    const value = document.getElementById("sched-value").checked;
+    if (!label || !timeStr) return;
+    const response = await fetch("/api/schedules", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label, time: timeStr, topic: topicName, value }),
+    });
+    if (response.ok) {
+      document.getElementById("sched-label").value = "";
+      document.getElementById("sched-value").checked = true;
+      loadSchedules();
+    }
+  });
+}
+
+/* ---------- Resumo diário ---------- */
+
+const SUMMARY_GROUPS = [
+  {
+    title: "Sala",
+    temp: topic("sala/dht11/temperature"),
+    humidity: topic("sala/dht11/humidity"),
+  },
+  {
+    title: "Quarto",
+    temp: topic("quarto/dht11/temperature"),
+    humidity: topic("quarto/dht11/humidity"),
+  },
+];
+
+function fmtNumber(value, digits) {
+  return value === null || value === undefined ? "—" : Number(value).toFixed(digits || 0);
+}
+
+function renderSummary(summary) {
+  const box = document.getElementById("summary-chips");
+  if (!box) return;
+
+  let html = "";
+  for (const group of SUMMARY_GROUPS) {
+    const temp = summary.sensors[group.temp];
+    const humidity = summary.sensors[group.humidity];
+    html += `
+      <span class="summary-chip">
+        <strong>${group.title}</strong>
+        Temp ${fmtNumber(temp?.max, 1)}°C máx · ${fmtNumber(temp?.min, 1)}°C mín · agora ${fmtNumber(temp?.avg, 1)}
+        · Umid ${fmtNumber(humidity?.max, 0)}% máx
+      </span>`;
+  }
+
+  const smoke = summary.sensors[`${topic("cozinha/fumaca/percentage")}`];
+  const alerts = Object.entries(summary.events)
+    .filter(([key]) => key.startsWith("alert:"))
+    .reduce((acc, [, count]) => acc + count, 0);
+  const commands = Object.entries(summary.events)
+    .filter(([key]) => key.startsWith("command:"))
+    .reduce((acc, [, count]) => acc + count, 0);
+
+  html += `
+    <span class="summary-chip"><strong>Fumaça (cozinha)</strong> máximo ${fmtNumber(smoke?.max, 0)}%</span>
+    <span class="summary-chip"><strong>Alertas hoje</strong> ${alerts}</span>
+    <span class="summary-chip"><strong>Comandos hoje</strong> ${commands}</span>`;
+
+  box.innerHTML = html || '<span class="summary-na">Sem dados hoje.</span>';
+}
+
+async function loadSummary() {
+  const box = document.getElementById("summary-chips");
+  if (!box) return;
+  try {
+    const response = await fetch("/api/summary");
+    if (response.status === 401) {
+      redirectToLogin();
+      return;
+    }
+    if (!response.ok) return;
+    const data = await response.json();
+    if (data.ok) renderSummary(data.summary);
+  } catch (error) {
+    // mantém último resumo
+  }
+}
+
+/* ---------- Clima externo ---------- */
+
+async function loadWeather() {
+  const el = document.getElementById("externo-dht");
+  if (!el) return;
+  try {
+    const response = await fetch("/api/weather");
+    if (response.status === 401) {
+      redirectToLogin();
+      return;
+    }
+    const data = await response.json();
+    if (!data.ok || !data.weather) {
+      el.textContent = "--";
+      return;
+    }
+    const w = data.weather;
+    const parts = [w.temperature !== null ? `${w.temperature.toFixed(1)}°C` : null];
+    if (w.humidity !== null) parts.push(`${w.humidity}%`);
+    if (w.label) parts.push(w.label);
+    el.textContent = parts.filter(Boolean).join(" · ") || "--";
+  } catch (error) {
+    el.textContent = "--";
+  }
+}
+
+/* ---------- Planta interativa ---------- */
+
+const FLOORPLAN_LIT_ROOMS = ["sala", "quarto", "banheiro", "cozinha", "escritorio", "garagem"];
+
+function setFloorplanElement(selector, query, active) {
+  const el = document.querySelector(selector);
+  if (el) el.classList.toggle(query, active);
+}
+
+function updateFloorPlan() {
+  const svg = document.getElementById("floorplan-svg");
+  if (!svg) return;
+
+  for (const room of FLOORPLAN_LIT_ROOMS) {
+    const light = svg.querySelector(`[data-room-light="${room}"]`);
+    if (light) light.classList.toggle("on", value(`${room}/led/state`) === true);
+  }
+
+  setFloorplanElement(`[data-fp-motion="sala"]`, "on", value("sala/movimento/state") === true);
+  setFloorplanElement(`[data-fp-motion="patio"]`, "on", value("patio/movimento/state") === true);
+  setFloorplanElement(`[data-fp-motion="garagem"]`, "on", value("garagem/movimento/state") === true);
+  setFloorplanElement(`[data-fp-smoke="cozinha"]`, "on", value("cozinha/fumaca/state") === true);
+  setFloorplanElement(`[data-fp-door="sala"]`, "on", value("sala/porta/state") === true);
+  setFloorplanElement(`[data-fp-gate="garagem"]`, "on", value("garagem/portao/state") === true);
+
+  const salaSub = svg.querySelector(`[data-rank="sala"]`);
+  if (salaSub)
+    salaSub.textContent = `T ${numberText(value("sala/dht11/temperature"), 1, "°C")} · U ${numberText(
+      value("sala/dht11/humidity"),
+      0,
+      "%"
+    )}`;
+  const quartoSub = svg.querySelector(`[data-rank="quarto"]`);
+  if (quartoSub)
+    quartoSub.textContent = `T ${numberText(value("quarto/dht11/temperature"), 1, "°C")} · U ${numberText(
+      value("quarto/dht11/humidity"),
+      0,
+      "%"
+    )}`;
+  const cozinhaSub = svg.querySelector(`[data-rank="cozinha"]`);
+  if (cozinhaSub)
+    cozinhaSub.textContent = `Fumaça ${numberText(value("cozinha/fumaca/percentage"), 0, "%")}`;
+}
+
+function setupFloorPlanClicks() {
+  const svg = document.getElementById("floorplan-svg");
+  if (!svg) return;
+  svg.querySelectorAll(".fp-room[data-foundation]").forEach((group) => {
+    const room = group.dataset.foundation;
+    if (!FLOORPLAN_LIT_ROOMS.includes(room)) return;
+    group.addEventListener("click", () => {
+      const currentOn = value(`${room}/led/state`) === true;
+      sendCommand(topic(`${room}/led/command`), !currentOn);
+    });
+  });
+}
+
 /* ---------- PWA / service worker ---------- */
 
 if ("serviceWorker" in navigator) {
@@ -815,7 +1122,16 @@ setupVacationToggle();
 setupTimelineChips();
 setupTestButtons();
 setupTestPanelSecret();
+buildScheduleSelect();
+setupScheduleForm();
+setupFloorPlanClicks();
+loadSchedules();
+setInterval(loadSchedules, 20000);
 loadEvents();
 setInterval(loadEvents, 5000);
 loadHistory();
 setInterval(loadHistory, 30000);
+loadSummary();
+setInterval(loadSummary, 60000);
+loadWeather();
+setInterval(loadWeather, 600000);

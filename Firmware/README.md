@@ -115,5 +115,10 @@ Dependências (`platformio.ini`):
 - **MC38 (NO/NC)**: o construtor aceita `activeHigh`. Com `INPUT_PULLUP` + contato NC,
   use `MC38Class(pin, false)` para `HIGH` = porta aberta (padrão é `true`).
 - O servo inicia em 0° no boot.
+- **Debounce de contatos**: os sensores MC38 (porta/portão) e KY-003 (Hall) são amostrados a cada
+  iteração do loop (`UpdateFastSensors`) e estabilizados com debounce de 40ms — evita toggles
+  falsos por bounce físico e deixa a detecção mais rápida (ms em vez de 2s).
+- **MQ-2**: o percentual analógico é suavizado com EMA (alpha 0.3) para reduzir ruído e falsos
+  alertas; o estado binário `fumaca/state` continua vindo do pino digital (histerese do LM393).
 - A página do display (SSD1306) alterna a cada 5s entre: Segurança, Cozinha, Ambiente e Acessos.
   A página **Segurança** também indica o estado do **modo férias** (linha inferior).

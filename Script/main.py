@@ -51,9 +51,10 @@ def detect_arduino_port():
 
 def connect_mqtt():
     try:
-        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="maquete-script")
     except AttributeError:
-        client = mqtt.Client()
+        client = mqtt.Client(client_id="maquete-script")
+    client.clean_session = False
     if MQTT_USERNAME and MQTT_PASSWORD:
         client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
     client.on_connect = on_connect

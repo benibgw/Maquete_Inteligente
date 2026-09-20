@@ -887,7 +887,7 @@ footer a:hover {
 
 .history-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 14px;
 }
 
@@ -916,4 +916,314 @@ footer a:hover {
   color: var(--muted);
   font-size: 0.85rem;
   padding: 10px;
+}
+
+/* ---------- Agendamentos ---------- */
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.form-row input[type="text"],
+.form-row input[type="time"],
+.form-row select {
+  flex: 1 1 140px;
+  padding: 9px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: rgba(17, 17, 27, 0.45);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
+.form-row input::placeholder {
+  color: var(--muted);
+}
+
+.form-row select {
+  cursor: pointer;
+}
+
+.schedules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.schedules-na {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.schedule-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  background: rgba(17, 17, 27, 0.45);
+  border: 1px solid transparent;
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+.schedule-row.disabled {
+  border-left-color: var(--off);
+  opacity: 0.6;
+}
+
+.schedule-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.schedule-info strong {
+  font-weight: 600;
+}
+
+.schedule-info span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.schedule-row .remove-btn {
+  flex: none;
+  min-width: 0;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+}
+
+/* ---------- Resumo diário & CSV ---------- */
+
+.csv-link {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.csv-link:hover {
+  border-color: rgba(203, 166, 247, 0.5);
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.history-head h3 {
+  margin: 0;
+}
+
+.summary-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.summary-na {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.summary-chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  background: rgba(17, 17, 27, 0.45);
+  border: 1px solid var(--card-border);
+  border-left: 3px solid var(--accent);
+  border-radius: 12px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.summary-chip strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ---------- Planta interativa ---------- */
+
+.floorplan {
+  width: 100%;
+  height: auto;
+  margin-top: 12px;
+  border-radius: 12px;
+  background: rgba(17, 17, 27, 0.35);
+}
+
+.floorplan-hint {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.fp-room {
+  cursor: pointer;
+}
+
+.fp-room > rect {
+  fill: rgba(17, 17, 27, 0.5);
+  stroke: var(--card-border);
+  stroke-width: 2;
+  transition: stroke 0.2s ease;
+}
+
+.fp-room .fp-sup {
+  stroke-dasharray: 7 5;
+}
+
+.fp-room:hover > rect {
+  stroke: rgba(203, 166, 247, 0.6);
+}
+
+.fp-floor-label {
+  fill: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.fp-label {
+  fill: var(--text);
+  font-size: 17px;
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+.fp-sub {
+  fill: var(--muted);
+  font-size: 13px;
+  text-anchor: middle;
+}
+
+.fp-overlay {
+  pointer-events: none;
+}
+
+.fp-light {
+  fill: var(--off);
+  opacity: 0.35;
+  transition: fill 0.25s ease, opacity 0.25s ease;
+}
+
+.fp-light.on {
+  fill: var(--on);
+  opacity: 1;
+}
+
+.fp-motion {
+  fill: rgba(249, 226, 175, 0.16);
+  stroke: var(--warn);
+  stroke-width: 2;
+  transition: fill 0.25s ease, stroke-width 0.25s ease;
+}
+
+.fp-motion.on {
+  fill: var(--warn);
+  stroke-width: 3;
+}
+
+.fp-smoke {
+  fill: rgba(243, 139, 168, 0.16);
+  stroke: var(--alert);
+  stroke-width: 2;
+  transition: fill 0.25s ease, stroke-width 0.25s ease;
+}
+
+.fp-smoke.on {
+  fill: var(--alert);
+  stroke-width: 3;
+}
+
+.fp-door {
+  fill: rgba(166, 227, 161, 0.16);
+  stroke: var(--on);
+  stroke-width: 2;
+  transition: fill 0.25s ease, stroke-width 0.25s ease;
+}
+
+.fp-door.on {
+  fill: var(--on);
+  stroke-width: 3;
+}
+
+.fp-gate {
+  fill: rgba(166, 227, 161, 0.16);
+  stroke: var(--on);
+  stroke-width: 2;
+  transition: fill 0.25s ease, stroke-width 0.25s ease;
+}
+
+.fp-gate.on {
+  fill: var(--on);
+  stroke-width: 3;
+}
+
+.fp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
+  margin-top: 12px;
+}
+
+.fp-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.fp-legend-item .swatch {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.swatch-light {
+  background: var(--off);
+  opacity: 0.7;
+}
+
+.swatch-motion {
+  background: rgba(249, 226, 175, 0.16);
+  border: 2px solid var(--warn);
+}
+
+.swatch-smoke {
+  background: rgba(243, 139, 168, 0.16);
+  border: 2px solid var(--alert);
+}
+
+.swatch-door {
+  background: rgba(166, 227, 161, 0.16);
+  border: 2px solid var(--on);
+}
+
+.swatch-gate {
+  background: rgba(166, 227, 161, 0.16);
+  border: 2px solid var(--on);
 }

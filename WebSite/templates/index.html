@@ -34,7 +34,7 @@
   <div id="alert-stack" class="alert-stack"></div>
 
   <main>
-    <section class="card span2" id="card-security">
+    <section class="card" id="card-security">
       <div class="card-head">
         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6l7-3Z"/>
@@ -51,21 +51,6 @@
         <button id="alarm-arm">Armar</button>
         <button id="alarm-disarm" class="ghost">Desarmar</button>
         <strong id="alarm-triggered-badge" class="status-badge state-na">--</strong>
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="card-head">
-        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-          <circle cx="12" cy="7" r="4"/>
-        </svg>
-        <h2>Presença</h2>
-      </div>
-      <div class="rows">
-        <div class="row"><span>Sala</span><strong id="motion-sala">--</strong></div>
-        <div class="row"><span>Garagem</span><strong id="motion-garagem">--</strong></div>
-        <div class="row"><span>Pátio</span><strong id="motion-patio">--</strong></div>
       </div>
     </section>
 
@@ -96,6 +81,36 @@
     <section class="card">
       <div class="card-head">
         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <h2>Presença</h2>
+      </div>
+      <div class="rows">
+        <div class="row"><span>Sala</span><strong id="motion-sala">--</strong></div>
+        <div class="row"><span>Garagem</span><strong id="motion-garagem">--</strong></div>
+        <div class="row"><span>Pátio</span><strong id="motion-patio">--</strong></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m22 8-6 4 6 4V8Z"/>
+          <path d="M14 9v14H4V9a5 5 0 0 1 10 0Z"/>
+          <path d="M8 6v6M6 9h4M8 13h.01"/>
+        </svg>
+        <h2>Cenas</h2>
+      </div>
+      <div class="actions">
+        <button id="scene-leave">Sair de casa</button>
+        <button id="scene-arrive" class="ghost">Chegar em casa</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>
         </svg>
         <h2>Ambiente</h2>
@@ -103,6 +118,7 @@
       <div class="rows">
         <div class="row"><span>Sala</span><strong id="sala-dht">--</strong></div>
         <div class="row"><span>Quarto</span><strong id="quarto-dht">--</strong></div>
+        <div class="row"><span>Externo</span><strong id="externo-dht">--</strong></div>
       </div>
     </section>
 
@@ -147,6 +163,112 @@
       <div class="rooms" id="rooms-grid"></div>
     </section>
 
+    <section class="card wide" id="card-schedules">
+      <div class="card-head">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+        <h2>Agendamentos</h2>
+      </div>
+      <div class="form-row" id="schedule-form">
+        <input type="text" id="sched-label" placeholder="Nome (ex.: Apagar luzes)">
+        <input type="time" id="sched-time" aria-label="Horário">
+        <select id="sched-topic" aria-label="Comando"></select>
+        <label class="toggle" title="Valor do comando (ligar/desligar)">
+          <input type="checkbox" id="sched-value" checked>
+          <span class="track"></span>
+        </label>
+        <button id="sched-add">Adicionar</button>
+      </div>
+      <ul class="schedules" id="schedules-list">
+        <li class="schedules-na">Carregando...</li>
+      </ul>
+    </section>
+
+    <section class="card wide" id="card-floorplan">
+      <div class="card-head">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3h18v18H3z"/>
+          <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
+        </svg>
+        <h2>Planta interativa</h2>
+        <span class="floorplan-hint">Clique em um cômodo para ligar/desligar a luz</span>
+      </div>
+      <svg class="floorplan" id="floorplan-svg" viewBox="0 0 900 780" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Planta da maquete">
+        <text x="40" y="34" class="fp-floor-label">Térreo</text>
+        <g id="fp-terreo">
+          <g class="fp-room" data-foundation="banheiro">
+            <rect x="40" y="55" width="320" height="190" rx="10"/>
+            <text x="200" y="89" class="fp-label">Banheiro</text>
+            <g class="fp-overlay">
+              <circle cx="200" cy="141" r="18" class="fp-light" data-room-light="banheiro" />
+            </g>
+          </g>
+          <g class="fp-room" data-foundation="cozinha">
+            <rect x="380" y="55" width="230" height="190" rx="10"/>
+            <text x="495" y="89" class="fp-label">Cozinha</text>
+            <g class="fp-overlay">
+              <circle cx="495" cy="141" r="18" class="fp-light" data-room-light="cozinha" />
+              <circle cx="580" cy="87" r="11" class="fp-smoke" data-fp-smoke="cozinha"><title>Sensor de fumaça</title></circle>
+              <text x="495" y="231" class="fp-sub" data-rank="cozinha">Fumaça 12%</text>
+            </g>
+          </g>
+          <g class="fp-room" data-foundation="sala">
+            <rect x="630" y="55" width="230" height="190" rx="10"/>
+            <text x="745" y="89" class="fp-label">Sala</text>
+            <g class="fp-overlay">
+              <circle cx="745" cy="141" r="18" class="fp-light" data-room-light="sala" />
+              <circle cx="830" cy="87" r="11" class="fp-door" data-fp-door="sala"><title>Porta da sala</title></circle>
+              <circle cx="830" cy="115" r="11" class="fp-motion" data-fp-motion="sala"><title>Movimento na sala</title></circle>
+              <text x="745" y="231" class="fp-sub" data-rank="sala">T 21°C · U 55%</text>
+            </g>
+          </g>
+          <g class="fp-room" data-foundation="garagem">
+            <rect x="40" y="275" width="320" height="190" rx="10"/>
+            <text x="200" y="309" class="fp-label">Garagem</text>
+            <g class="fp-overlay">
+              <circle cx="200" cy="361" r="18" class="fp-light" data-room-light="garagem" />
+              <circle cx="330" cy="307" r="11" class="fp-motion" data-fp-motion="garagem"><title>Movimento na garagem</title></circle>
+              <rect x="140" y="437" width="120" height="20" rx="4" class="fp-gate" data-fp-gate="garagem"><title>Portão da garagem</title></rect>
+            </g>
+          </g>
+          <g class="fp-room" data-foundation="patio">
+            <rect x="380" y="275" width="480" height="190" rx="10"/>
+            <text x="620" y="309" class="fp-label">Pátio</text>
+            <g class="fp-overlay">
+              <circle cx="830" cy="307" r="11" class="fp-motion" data-fp-motion="patio"><title>Movimento no pátio</title></circle>
+            </g>
+          </g>
+        </g>
+        <text x="40" y="504" class="fp-floor-label">Superior</text>
+        <g id="fp-superior">
+          <g class="fp-room" data-foundation="quarto">
+            <rect x="40" y="525" width="320" height="200" rx="10" class="fp-sup"/>
+            <text x="200" y="559" class="fp-label">Quarto</text>
+            <g class="fp-overlay">
+              <circle cx="200" cy="611" r="18" class="fp-light" data-room-light="quarto" />
+              <text x="200" y="711" class="fp-sub" data-rank="quarto">T 22°C · U 60%</text>
+            </g>
+          </g>
+          <g class="fp-room" data-foundation="escritorio">
+            <rect x="380" y="525" width="480" height="200" rx="10" class="fp-sup"/>
+            <text x="620" y="559" class="fp-label">Escritório</text>
+            <g class="fp-overlay">
+              <circle cx="620" cy="611" r="18" class="fp-light" data-room-light="escritorio" />
+            </g>
+          </g>
+        </g>
+      </svg>
+      <div class="fp-legend" aria-hidden="true">
+        <span class="fp-legend-item"><span class="swatch swatch-light"></span>Luz</span>
+        <span class="fp-legend-item"><span class="swatch swatch-motion"></span>Movimento</span>
+        <span class="fp-legend-item"><span class="swatch swatch-smoke"></span>Fumaça</span>
+        <span class="fp-legend-item"><span class="swatch swatch-door"></span>Porta</span>
+        <span class="fp-legend-item"><span class="swatch swatch-gate"></span>Portão</span>
+      </div>
+    </section>
+
     <section class="card span2 test-panel" id="card-test-panel" hidden>
       <div class="card-head">
         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -168,6 +290,30 @@
       </div>
     </section>
 
+    <section class="card wide history-panel">
+      <div class="card-head">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v18h18"/>
+          <path d="m19 9-5 5-4-4-3 3"/>
+        </svg>
+        <h2>Histórico</h2>
+      </div>
+      <div class="history-grid" id="history-grid"></div>
+    </section>
+
+    <section class="card span2" id="card-summary">
+      <div class="card-head">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v16a2 2 0 0 0 2 2h16"/>
+          <path d="M18 17v-5M13 17V8M8 17v-3"/>
+        </svg>
+        <h2>Resumo de hoje</h2>
+      </div>
+      <div class="summary-chips" id="summary-chips">
+        <span class="summary-na">Carregando...</span>
+      </div>
+    </section>
+
     <section class="card history-panel" id="card-timeline">
       <div class="card-head">
         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -175,6 +321,7 @@
           <circle cx="12" cy="12" r="9"/>
         </svg>
         <h2>Linha do tempo</h2>
+        <a class="csv-link" href="/api/export/events.csv" download>Baixar CSV</a>
       </div>
       <div class="chips" id="timeline-chips">
         <button class="chip active" data-filter="all">Tudo</button>
@@ -185,17 +332,6 @@
       <ul class="timeline" id="timeline-list">
         <li class="timeline-row"><span class="timeline-na">Carregando...</span></li>
       </ul>
-    </section>
-
-    <section class="card history-panel">
-      <div class="card-head">
-        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 3v18h18"/>
-          <path d="m19 9-5 5-4-4-3 3"/>
-        </svg>
-        <h2>Histórico</h2>
-      </div>
-      <div class="history-grid" id="history-grid"></div>
     </section>
   </main>
 

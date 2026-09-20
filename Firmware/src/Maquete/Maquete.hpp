@@ -23,6 +23,7 @@ class MaqueteClass{
         enum { CommandLineBufferSize = 64 };
 
         void RefreshSensorState();
+        void UpdateFastSensors();
         void ApplyRules();
         void ProcessInbound();
         void HandleCommand(const char* topic, bool value);

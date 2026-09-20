@@ -12,4 +12,7 @@ class MQ2Class{
         uint8_t AnalogPin;
         uint8_t DigitalPin;
         uint16_t Threshold;
+        float FilteredRaw;
+        uint32_t LastFilteredAt;
+        void SampleAndFilter();
 };
