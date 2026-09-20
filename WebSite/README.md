@@ -17,8 +17,9 @@ Recursos além do controle em tempo real:
   *Chegar em casa*).
 - **Agendamentos**: dispara um comando em horário fixo (HH:MM) todos os dias, com o dia do último
   disparo guardado no banco para não repetir no mesmo dia.
-- **Planta interativa** (SVG): visualiza a disposição dos cômodos; clicar num cômodo liga/desliga
-  a luz e os indicadores refletem sensores (luz, movimento, fumaça, porta, portão).
+- **Maquete 3D** (Three.js, via CDN): casa 3D interativa com dois andares e telhado; arrastar
+  gira/zoom; clicar num cômodo liga/desliga a luz e os indicadores refletem sensores (luz,
+  movimento, fumaça, porta, portão).
 - **Resumo de hoje**: agregados do dia (mín/máx/atual de temperatura/umidade, fumaça máx, nº de
   alertas e comandos).
 - **Clima externo**: temperatura/umidade/vento e condição do tempo via Open-Meteo (sem
@@ -61,9 +62,12 @@ WebSite/
 - **Ambiente**: temperatura/umidade (DHT11) da sala, do quarto e **tempo externo** (Open-Meteo).
 - **Cozinha**: nível de fumaça (barra) + alerta, e exaustor (toggle).
 - **Iluminação**: um card por cômodo com LDR (barra de luz) e toggle do LED.
-- **Planta interativa**: disposição esquemática dos cômodos (térreo e superior); clique num
-  cômodo alterna a luz e os círculos de acessórios indicam luz acesa, movimento, fumaça, porta e
-  portão abertos. Fica logo abaixo do card Iluminação.
+- **Maquete 3D**: casa 3D (Three.js) com os cômodos do térreo e do superior, separados por um
+  vão entre os andares; arrastar gira e a rodinha aplica zoom; clique num cômodo alterna a luz.
+  As lâmpadas (esferas no teto) e o portão (bloco) ficam nos cômodos; os sensores (movimento,
+  fumaça e porta) ficam empilhados num canto de cada cômodo, um sobre o outro, com as cores
+  refletindo o estado. Um telhado de duas águas (prisma triangular com base retangular e beiral)
+  encerra o modelo. Fica logo abaixo do card Iluminação.
 - **Cenas**: botões *Sair de casa* (apaga todas as luzes, desliga exaustor, fecha porta/portão e
   arma o alarme) e *Chegar em casa* (desarma, abre o portão e acende a sala). Os comandos são
   publicados em sequência com 150ms de intervalo.

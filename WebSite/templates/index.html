@@ -108,7 +108,7 @@
       </div>
     </section>
 
-    <section class="card">
+    <section class="card span2">
       <div class="card-head">
         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>
@@ -122,7 +122,7 @@
       </div>
     </section>
 
-    <section class="card" id="card-kitchen">
+    <section class="card span2" id="card-kitchen">
       <div class="card-head">
         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5Z"/>
@@ -174,7 +174,13 @@
       <div class="form-row" id="schedule-form">
         <input type="text" id="sched-label" placeholder="Nome (ex.: Apagar luzes)">
         <input type="time" id="sched-time" aria-label="Horário">
-        <select id="sched-topic" aria-label="Comando"></select>
+        <div class="custom-select" id="sched-topic" role="listbox" aria-label="Comando">
+          <button type="button" class="select-trigger" aria-haspopup="listbox" aria-expanded="false">
+            <span class="select-value">—</span>
+            <span class="select-arrow">▾</span>
+          </button>
+          <ul class="select-list" role="listbox" aria-label="Comando" hidden></ul>
+        </div>
         <label class="toggle" title="Valor do comando (ligar/desligar)">
           <input type="checkbox" id="sched-value" checked>
           <span class="track"></span>
@@ -192,74 +198,10 @@
           <path d="M3 3h18v18H3z"/>
           <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
         </svg>
-        <h2>Planta interativa</h2>
-        <span class="floorplan-hint">Clique em um cômodo para ligar/desligar a luz</span>
+        <h2>Maquete 3D</h2>
+        <span class="floorplan-hint">Arraste para girar · role p/ zoom · clique num cômodo p/ ligar/desligar a luz</span>
       </div>
-      <svg class="floorplan" id="floorplan-svg" viewBox="0 0 900 780" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Planta da maquete">
-        <text x="40" y="34" class="fp-floor-label">Térreo</text>
-        <g id="fp-terreo">
-          <g class="fp-room" data-foundation="banheiro">
-            <rect x="40" y="55" width="320" height="190" rx="10"/>
-            <text x="200" y="89" class="fp-label">Banheiro</text>
-            <g class="fp-overlay">
-              <circle cx="200" cy="141" r="18" class="fp-light" data-room-light="banheiro" />
-            </g>
-          </g>
-          <g class="fp-room" data-foundation="cozinha">
-            <rect x="380" y="55" width="230" height="190" rx="10"/>
-            <text x="495" y="89" class="fp-label">Cozinha</text>
-            <g class="fp-overlay">
-              <circle cx="495" cy="141" r="18" class="fp-light" data-room-light="cozinha" />
-              <circle cx="580" cy="87" r="11" class="fp-smoke" data-fp-smoke="cozinha"><title>Sensor de fumaça</title></circle>
-              <text x="495" y="231" class="fp-sub" data-rank="cozinha">Fumaça 12%</text>
-            </g>
-          </g>
-          <g class="fp-room" data-foundation="sala">
-            <rect x="630" y="55" width="230" height="190" rx="10"/>
-            <text x="745" y="89" class="fp-label">Sala</text>
-            <g class="fp-overlay">
-              <circle cx="745" cy="141" r="18" class="fp-light" data-room-light="sala" />
-              <circle cx="830" cy="87" r="11" class="fp-door" data-fp-door="sala"><title>Porta da sala</title></circle>
-              <circle cx="830" cy="115" r="11" class="fp-motion" data-fp-motion="sala"><title>Movimento na sala</title></circle>
-              <text x="745" y="231" class="fp-sub" data-rank="sala">T 21°C · U 55%</text>
-            </g>
-          </g>
-          <g class="fp-room" data-foundation="garagem">
-            <rect x="40" y="275" width="320" height="190" rx="10"/>
-            <text x="200" y="309" class="fp-label">Garagem</text>
-            <g class="fp-overlay">
-              <circle cx="200" cy="361" r="18" class="fp-light" data-room-light="garagem" />
-              <circle cx="330" cy="307" r="11" class="fp-motion" data-fp-motion="garagem"><title>Movimento na garagem</title></circle>
-              <rect x="140" y="437" width="120" height="20" rx="4" class="fp-gate" data-fp-gate="garagem"><title>Portão da garagem</title></rect>
-            </g>
-          </g>
-          <g class="fp-room" data-foundation="patio">
-            <rect x="380" y="275" width="480" height="190" rx="10"/>
-            <text x="620" y="309" class="fp-label">Pátio</text>
-            <g class="fp-overlay">
-              <circle cx="830" cy="307" r="11" class="fp-motion" data-fp-motion="patio"><title>Movimento no pátio</title></circle>
-            </g>
-          </g>
-        </g>
-        <text x="40" y="504" class="fp-floor-label">Superior</text>
-        <g id="fp-superior">
-          <g class="fp-room" data-foundation="quarto">
-            <rect x="40" y="525" width="320" height="200" rx="10" class="fp-sup"/>
-            <text x="200" y="559" class="fp-label">Quarto</text>
-            <g class="fp-overlay">
-              <circle cx="200" cy="611" r="18" class="fp-light" data-room-light="quarto" />
-              <text x="200" y="711" class="fp-sub" data-rank="quarto">T 22°C · U 60%</text>
-            </g>
-          </g>
-          <g class="fp-room" data-foundation="escritorio">
-            <rect x="380" y="525" width="480" height="200" rx="10" class="fp-sup"/>
-            <text x="620" y="559" class="fp-label">Escritório</text>
-            <g class="fp-overlay">
-              <circle cx="620" cy="611" r="18" class="fp-light" data-room-light="escritorio" />
-            </g>
-          </g>
-        </g>
-      </svg>
+      <div id="model-3d" class="model-3d" role="img" aria-label="Maquete 3D da casa"></div>
       <div class="fp-legend" aria-hidden="true">
         <span class="fp-legend-item"><span class="swatch swatch-light"></span>Luz</span>
         <span class="fp-legend-item"><span class="swatch swatch-motion"></span>Movimento</span>
@@ -269,7 +211,7 @@
       </div>
     </section>
 
-    <section class="card span2 test-panel" id="card-test-panel" hidden>
+    <section class="card wide test-panel" id="card-test-panel" hidden>
       <div class="card-head">
         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 2v6a2 2 0 0 1-2 2H2"/>
@@ -301,7 +243,7 @@
       <div class="history-grid" id="history-grid"></div>
     </section>
 
-    <section class="card span2" id="card-summary">
+    <section class="card wide" id="card-summary">
       <div class="card-head">
         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 3v16a2 2 0 0 0 2 2h16"/>
@@ -321,7 +263,7 @@
           <circle cx="12" cy="12" r="9"/>
         </svg>
         <h2>Linha do tempo</h2>
-        <a class="csv-link" href="/api/export/events.csv" download>Baixar CSV</a>
+        <a class="csv-link head-end" href="/api/export/events.csv" download>Baixar CSV</a>
       </div>
       <div class="chips" id="timeline-chips">
         <button class="chip active" data-filter="all">Tudo</button>
@@ -358,6 +300,8 @@
     </div>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>

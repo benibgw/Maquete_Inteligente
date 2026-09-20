@@ -16,7 +16,7 @@ partes acontece por **MQTT**, com uma ponte **Serial**.
 | --- | --- |
 | **Firmware** | C++ · PlatformIO · Arduino Mega 2560 |
 | **Script** | Python 3 · paho-mqtt · pyserial |
-| **WebSite** | Python 3 · Flask · paho-mqtt · SQLite · HTML/CSS/JavaScript |
+| **WebSite** | Python 3 · Flask · paho-mqtt · SQLite · HTML/CSS/JavaScript (Three.js) |
 | **Testes** | Python 3 · paho-mqtt (`Project_Test`) |
 | **Comunicação** | MQTT (broker) + Serial 9600 (JSON por linha) |
 
@@ -53,6 +53,9 @@ Funções executadas continuamente pelo firmware a partir da leitura dos sensore
 ### Recursos do WebSite e monitoramento
 
 - **Clima**: leitura contínua de temperatura e umidade (DHT11) da sala e do quarto.
+- **Maquete 3D**: casa 3D (Three.js, via CDN) no painel — arrastar gira/zoom, clique num cômodo
+  alterna a luz, e os indicadores (lâmpadas, portão e sensores empilhados no canto de cada
+  cômodo) refletem o estado em tempo real.
 - **Linha do tempo de eventos**: o WebSite registra em SQLite as mudanças de sensores/estados e
   os comandos enviados, exibida em um painel com filtros (tudo, alertas, sensores, comandos).
 - **Painel de testes no simulador**: botões na interface (ocultos: `#painel-teste` na URL ou

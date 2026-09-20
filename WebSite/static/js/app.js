@@ -231,7 +231,7 @@ function render(data) {
   setStatus("motion-patio", value("patio/movimento/state"), "SIM", "NAO", "state-alert");
 
   updateRooms();
-  updateFloorPlan();
+  update3D();
 
   updateVacationToggle();
   checkAlerts();
@@ -848,13 +848,67 @@ function scheduleCommandTopic(actionTopic) {
 }
 
 function buildScheduleSelect() {
-  const select = document.getElementById("sched-topic");
-  if (!select) return;
-  SCHEDULE_ACTIONS.forEach((action) => {
-    const option = document.createElement("option");
-    option.value = scheduleCommandTopic(action.topic);
-    option.textContent = action.label;
-    select.appendChild(option);
+  const box = document.getElementById("sched-topic");
+  if (!box) return;
+
+  const trigger = box.querySelector(".select-trigger");
+  const valueEl = box.querySelector(".select-value");
+  const list = box.querySelector(".select-list");
+  if (!trigger || !valueEl || !list) return;
+
+  function clearSelected() {
+    list.querySelectorAll(".select-option").forEach((o) => o.classList.remove("selected"));
+  }
+
+  function setSelected(item) {
+    box.dataset.value = item.dataset.value;
+    valueEl.textContent = item.textContent;
+    clearSelected();
+    item.classList.add("selected");
+  }
+
+  function openList() {
+    list.hidden = false;
+    box.classList.add("open");
+    const card = box.closest(".card");
+    if (card) card.classList.add("card-open");
+    trigger.setAttribute("aria-expanded", "true");
+  }
+
+  function closeList() {
+    list.hidden = true;
+    box.classList.remove("open");
+    const card = box.closest(".card");
+    if (card) card.classList.remove("card-open");
+    trigger.setAttribute("aria-expanded", "false");
+  }
+
+  SCHEDULE_ACTIONS.forEach((action, index) => {
+    const item = document.createElement("li");
+    item.className = "select-option";
+    item.setAttribute("role", "option");
+    item.dataset.value = scheduleCommandTopic(action.topic);
+    item.textContent = action.label;
+    item.addEventListener("click", () => {
+      setSelected(item);
+      closeList();
+      trigger.focus();
+    });
+    list.appendChild(item);
+    if (index === 0) setSelected(item);
+  });
+
+  trigger.addEventListener("click", () => {
+    if (list.hidden) openList();
+    else closeList();
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!box.contains(event.target)) closeList();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeList();
   });
 }
 
@@ -938,7 +992,7 @@ function setupScheduleForm() {
   add.addEventListener("click", async () => {
     const label = document.getElementById("sched-label").value.trim();
     const timeStr = document.getElementById("sched-time").value;
-    const topicName = document.getElementById("sched-topic").value;
+    const topicName = document.getElementById("sched-topic").dataset.value;
     const value = document.getElementById("sched-value").checked;
     if (!label || !timeStr) return;
     const response = await fetch("/api/schedules", {
@@ -1048,61 +1102,322 @@ async function loadWeather() {
   }
 }
 
-/* ---------- Planta interativa ---------- */
+/* ---------- Maquete 3D (Three.js) ---------- */
 
-const FLOORPLAN_LIT_ROOMS = ["sala", "quarto", "banheiro", "cozinha", "escritorio", "garagem"];
+const HOUSE_SCALE = 0.014;
+const HOUSE_OFFX = 450;
+const HOUSE_OFFZ = 490;
 
-function setFloorplanElement(selector, query, active) {
-  const el = document.querySelector(selector);
-  if (el) el.classList.toggle(query, active);
+const MODEL_WALL_H = 1.5;
+const MODEL_GAP = 30 * HOUSE_SCALE;
+const MODEL_UP_H = 1.2;
+const MODEL_UP_Y = MODEL_WALL_H + MODEL_GAP;
+const MODEL_PATIO_H = 0.5;
+const MODEL_OFF = 0x45475a;
+const MODEL_LIGHT = 0xffd166;
+const MODEL_WARN = 0xf9e2af;
+const MODEL_ALERT = 0xf38ba8;
+const MODEL_ON = 0xa6e3a1;
+
+const MODEL_ROOMS = [
+  { id: "banheiro",   label: "Banheiro",   x: 40,  y: 55,  w: 320, h: 190, floor: 0, light: true,  color: 0xf2cdcd },
+  { id: "cozinha",    label: "Cozinha",    x: 380, y: 55,  w: 230, h: 190, floor: 0, light: true,  color: 0xf9e2af },
+  { id: "sala",       label: "Sala",       x: 630, y: 55,  w: 230, h: 190, floor: 0, light: true,  color: 0xa6e3a1 },
+  { id: "garagem",    label: "Garagem",    x: 40,  y: 275, w: 320, h: 190, floor: 0, light: true,  color: 0x89b4fa },
+  { id: "patio",      label: "Pátio",      x: 380, y: 275, w: 480, h: 190, floor: 0, patio: true,  light: false, color: 0xa6adc8 },
+  { id: "quarto",     label: "Quarto",     x: 40,  y: 55,  w: 320, h: 190, floor: 1, light: true,  color: 0xcba6f7 },
+  { id: "escritorio", label: "Escritório", x: 380, y: 55,  w: 480, h: 190, floor: 1, light: true,  color: 0xb4befe },
+];
+
+function modelFootprint(room) {
+  return {
+    cx: (room.x + room.w / 2 - HOUSE_OFFX) * HOUSE_SCALE,
+    cz: (room.y + room.h / 2 - HOUSE_OFFZ) * HOUSE_SCALE,
+    sw: Math.max(room.w * HOUSE_SCALE, 0.3),
+    sd: Math.max(room.h * HOUSE_SCALE, 0.3),
+  };
 }
 
-function updateFloorPlan() {
-  const svg = document.getElementById("floorplan-svg");
-  if (!svg) return;
+function setMeshColor(mesh, hex) {
+  if (mesh) mesh.material.color.setHex(hex);
+}
 
-  for (const room of FLOORPLAN_LIT_ROOMS) {
-    const light = svg.querySelector(`[data-room-light="${room}"]`);
-    if (light) light.classList.toggle("on", value(`${room}/led/state`) === true);
+let _r3d = null;
+
+function init3D() {
+  const el = document.getElementById("model-3d");
+  if (!el || _r3d) return;
+
+  if (!window.THREE) {
+    el.innerHTML = '<span class="model-na">Modelo 3D indisponível (biblioteca não carregou).</span>';
+    return;
   }
 
-  setFloorplanElement(`[data-fp-motion="sala"]`, "on", value("sala/movimento/state") === true);
-  setFloorplanElement(`[data-fp-motion="patio"]`, "on", value("patio/movimento/state") === true);
-  setFloorplanElement(`[data-fp-motion="garagem"]`, "on", value("garagem/movimento/state") === true);
-  setFloorplanElement(`[data-fp-smoke="cozinha"]`, "on", value("cozinha/fumaca/state") === true);
-  setFloorplanElement(`[data-fp-door="sala"]`, "on", value("sala/porta/state") === true);
-  setFloorplanElement(`[data-fp-gate="garagem"]`, "on", value("garagem/portao/state") === true);
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  } catch (error) {
+    el.innerHTML = '<span class="model-na">WebGL não disponível neste dispositivo.</span>';
+    return;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(el.clientWidth, el.clientHeight);
+  el.appendChild(renderer.domElement);
 
-  const salaSub = svg.querySelector(`[data-rank="sala"]`);
-  if (salaSub)
-    salaSub.textContent = `T ${numberText(value("sala/dht11/temperature"), 1, "°C")} · U ${numberText(
-      value("sala/dht11/humidity"),
-      0,
-      "%"
-    )}`;
-  const quartoSub = svg.querySelector(`[data-rank="quarto"]`);
-  if (quartoSub)
-    quartoSub.textContent = `T ${numberText(value("quarto/dht11/temperature"), 1, "°C")} · U ${numberText(
-      value("quarto/dht11/humidity"),
-      0,
-      "%"
-    )}`;
-  const cozinhaSub = svg.querySelector(`[data-rank="cozinha"]`);
-  if (cozinhaSub)
-    cozinhaSub.textContent = `Fumaça ${numberText(value("cozinha/fumaca/percentage"), 0, "%")}`;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, el.clientWidth / el.clientHeight, 0.1, 200);
+  camera.position.set(11, 12.4, 9.64);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 2.4, -3.36);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 4;
+  controls.maxDistance = 40;
+  controls.maxPolarAngle = Math.PI * 0.49;
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 1.2;
+  controls.addEventListener("start", () => {
+    controls.autoRotate = false;
+  });
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+  sun.position.set(10, 18, 8);
+  scene.add(sun);
+  const fill = new THREE.DirectionalLight(0xb4befe, 0.25);
+  fill.position.set(-8, 6, -10);
+  scene.add(fill);
+
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(30, 30),
+    new THREE.MeshLambertMaterial({ color: 0x181825 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.02;
+  scene.add(ground);
+
+  const grid = new THREE.GridHelper(24, 24, 0x3a3a4f, 0x2a2a3d);
+  scene.add(grid);
+
+  const roomMeshes = [];
+  const roomData = {};
+
+  MODEL_ROOMS.forEach((room) => {
+    const fp = modelFootprint(room);
+    const levelY = room.floor === 0 ? 0 : MODEL_UP_Y;
+    const wallH = room.patio ? MODEL_PATIO_H : room.floor === 0 ? MODEL_WALL_H : MODEL_UP_H;
+    const geo = new THREE.BoxGeometry(fp.sw, wallH, fp.sd);
+    const mat = new THREE.MeshLambertMaterial({
+      color: room.color,
+      transparent: true,
+      opacity: 0.32,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(fp.cx, levelY + wallH / 2, fp.cz);
+    mesh.userData.roomId = room.id;
+    scene.add(mesh);
+    roomMeshes.push(mesh);
+
+    const edges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(geo),
+      new THREE.LineBasicMaterial({ color: 0x45475a, transparent: true, opacity: 0.9 })
+    );
+    edges.position.copy(mesh.position);
+    scene.add(edges);
+
+    roomData[room.id] = { room, fp, mesh, mat, levelY, light: null, motion: null, smoke: null, door: null, gate: null };
+  });
+
+  function addMarker3D(roomId, svgX, svgY, shape, size, yOffset) {
+    const rd = roomData[roomId];
+    if (!rd) return null;
+    const mesh = new THREE.Mesh(
+      shape === "box"
+        ? new THREE.BoxGeometry(size, size * 0.55, Math.max(0.14, size * 0.15))
+        : new THREE.SphereGeometry(size / 2, 20, 14),
+      new THREE.MeshBasicMaterial({ color: MODEL_OFF })
+    );
+    mesh.position.set(
+      (svgX - HOUSE_OFFX) * HOUSE_SCALE,
+      rd.levelY + yOffset,
+      (svgY - HOUSE_OFFZ) * HOUSE_SCALE
+    );
+    scene.add(mesh);
+    return mesh;
+  }
+
+  MODEL_ROOMS.forEach((room) => {
+    if (!room.light) return;
+    const ceil = room.patio ? MODEL_PATIO_H : room.floor === 0 ? MODEL_WALL_H : MODEL_UP_H;
+    roomData[room.id].light = addMarker3D(
+      room.id,
+      room.x + room.w / 2,
+      room.y + room.h / 2,
+      "sphere",
+      0.5,
+      ceil - 0.28
+    );
+  });
+
+  roomData.garagem.gate = addMarker3D("garagem", 200, 447, "box", 1.0, 0.55);
+
+  const sensorStacks = [
+    { room: "sala", key: "door", corner: [644, 66], height: 0.42 },
+    { room: "sala", key: "motion", corner: [644, 66], height: 0.85 },
+    { room: "garagem", key: "motion", corner: [59, 286], height: 0.6 },
+    { room: "patio", key: "motion", corner: [409, 286], height: 0.25 },
+    { room: "cozinha", key: "smoke", corner: [394, 66], height: 0.8 },
+  ];
+  sensorStacks.forEach((s) => {
+    roomData[s.room][s.key] = addMarker3D(s.room, s.corner[0], s.corner[1], "sphere", 0.55, s.height);
+  });
+
+  const slab = new THREE.Mesh(
+    new THREE.BoxGeometry((860 - 40) * HOUSE_SCALE, 0.12, 190 * HOUSE_SCALE),
+    new THREE.MeshLambertMaterial({ color: 0x313244 })
+  );
+  slab.position.set(0, (MODEL_WALL_H + MODEL_UP_Y) / 2, (150 - HOUSE_OFFZ) * HOUSE_SCALE);
+  scene.add(slab);
+
+  const roofBase = (870 - 30) * HOUSE_SCALE;
+  const roofDepth = (265 - 35) * HOUSE_SCALE;
+  const roofH = 1.2;
+  const R = roofBase / 2;
+  const D = roofDepth / 2;
+  const roofGeo = new THREE.BufferGeometry();
+  roofGeo.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute([
+      -R, 0, -D,  R, 0, -D,  R, 0, D,  -R, 0, D,
+      -R, roofH, 0,  R, roofH, 0
+    ], 3)
+  );
+  roofGeo.setIndex([0, 1, 4, 1, 5, 4,  3, 2, 5, 3, 5, 4,  3, 0, 4,  1, 2, 5]);
+  roofGeo.computeVertexNormals();
+  const roof = new THREE.Mesh(
+    roofGeo,
+    new THREE.MeshLambertMaterial({ color: 0x6c7086, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide })
+  );
+  roof.position.set(0, MODEL_UP_Y + MODEL_UP_H + MODEL_GAP, (150 - HOUSE_OFFZ) * HOUSE_SCALE);
+  scene.add(roof);
+
+  const roofEdges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(roofGeo),
+    new THREE.LineBasicMaterial({ color: 0x45475a, transparent: true, opacity: 0.9 })
+  );
+  roofEdges.position.copy(roof.position);
+  scene.add(roofEdges);
+
+  const raycaster = new THREE.Raycaster();
+  const pointerDir = new THREE.Vector2();
+  let dragStart = null;
+
+  function toNDC(clientX, clientY) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    return {
+      x: ((clientX - rect.left) / rect.width) * 2 - 1,
+      y: -((clientY - rect.top) / rect.height) * 2 + 1,
+    };
+  }
+
+  function pick(clientX, clientY) {
+    const ndc = toNDC(clientX, clientY);
+    pointerDir.set(ndc.x, ndc.y);
+    raycaster.setFromCamera(pointerDir, camera);
+    const hits = raycaster.intersectObjects(roomMeshes, false);
+    return hits.length ? hits[0].object : null;
+  }
+
+  renderer.domElement.addEventListener("pointerdown", (event) => {
+    dragStart = { x: event.clientX, y: event.clientY };
+  });
+
+  renderer.domElement.addEventListener("pointerup", (event) => {
+    if (!dragStart) return;
+    const dist = Math.hypot(event.clientX - dragStart.x, event.clientY - dragStart.y);
+    dragStart = null;
+    if (dist > 6) return;
+    const mesh = pick(event.clientX, event.clientY);
+    if (!mesh) return;
+    const rd = roomData[mesh.userData.roomId];
+    if (!rd || !rd.room.light) return;
+    const on = value(`${rd.room.id}/led/state`) === true;
+    sendCommand(topic(`${rd.room.id}/led/command`), !on);
+  });
+
+  const tip = document.createElement("div");
+  tip.className = "model-tip";
+  tip.hidden = true;
+  el.appendChild(tip);
+
+  renderer.domElement.addEventListener("pointermove", (event) => {
+    const mesh = pick(event.clientX, event.clientY);
+    renderer.domElement.style.cursor = mesh ? "pointer" : "grab";
+    if (!mesh) {
+      tip.hidden = true;
+      return;
+    }
+    const rd = roomData[mesh.userData.roomId];
+    if (!rd) {
+      tip.hidden = true;
+      return;
+    }
+    const lightOn = rd.room.light && value(`${rd.room.id}/led/state`) === true;
+    tip.textContent = rd.room.label + (rd.room.light ? ` · luz ${lightOn ? "ligada" : "desligada"}` : "");
+    const rect = el.getBoundingClientRect();
+    tip.style.left = event.clientX - rect.left + 14 + "px";
+    tip.style.top = event.clientY - rect.top + 14 + "px";
+    tip.hidden = false;
+  });
+
+  renderer.domElement.addEventListener("pointerleave", () => {
+    tip.hidden = true;
+  });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  function onResize() {
+    const w = el.clientWidth;
+    const h = el.clientHeight;
+    if (!w || !h) return;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
+
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(onResize).observe(el);
+  } else {
+    window.addEventListener("resize", onResize);
+  }
+
+  _r3d = { roomData };
+  update3D();
 }
 
-function setupFloorPlanClicks() {
-  const svg = document.getElementById("floorplan-svg");
-  if (!svg) return;
-  svg.querySelectorAll(".fp-room[data-foundation]").forEach((group) => {
-    const room = group.dataset.foundation;
-    if (!FLOORPLAN_LIT_ROOMS.includes(room)) return;
-    group.addEventListener("click", () => {
-      const currentOn = value(`${room}/led/state`) === true;
-      sendCommand(topic(`${room}/led/command`), !currentOn);
-    });
-  });
+function update3D() {
+  if (!_r3d) return;
+  for (const id in _r3d.roomData) {
+    const rd = _r3d.roomData[id];
+    const floorOn = value(`${id}/led/state`) === true;
+    if (rd.room.light) setMeshColor(rd.light, floorOn ? MODEL_LIGHT : MODEL_OFF);
+    setMeshColor(rd.motion, value(`${id}/movimento/state`) === true ? MODEL_WARN : MODEL_OFF);
+    if (id === "cozinha") setMeshColor(rd.smoke, value("cozinha/fumaca/state") === true ? MODEL_ALERT : MODEL_OFF);
+    if (id === "sala") setMeshColor(rd.door, value("sala/porta/state") === true ? MODEL_ON : MODEL_OFF);
+    if (id === "garagem") setMeshColor(rd.gate, value("garagem/portao/state") === true ? MODEL_ON : MODEL_OFF);
+    if (rd.room.light) {
+      rd.mat.emissive.setHex(floorOn ? MODEL_LIGHT : 0x000000);
+      rd.mat.emissiveIntensity = floorOn ? 0.25 : 0;
+    }
+  }
 }
 
 /* ---------- PWA / service worker ---------- */
@@ -1124,7 +1439,7 @@ setupTestButtons();
 setupTestPanelSecret();
 buildScheduleSelect();
 setupScheduleForm();
-setupFloorPlanClicks();
+init3D();
 loadSchedules();
 setInterval(loadSchedules, 20000);
 loadEvents();
