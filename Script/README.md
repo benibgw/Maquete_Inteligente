@@ -48,7 +48,7 @@ são lidas de variáveis de ambiente, com `broker.mqtt.cool:1883` como padrão (
 apenas para testes).
 
 VID/PID conhecidos de fábrica: **Arduino Mega 16U2** `2341:0042/0043/0243` e **CH340** `1A86:7523`.
-Use `ARDUINO_VID`/`ARDUINO_PID` para adicionar outros. Se não houver filtro vidando,
+Use `ARDUINO_VID`/`ARDUINO_PID` para adicionar outros. Se não houver filtro válido,
 cai num fallback por descrição ("Arduino" ou "USB").
 
 ## Fluxo de dados

@@ -13,24 +13,24 @@ Serial 9600 (JSON por linha) ⇄ Script → MQTT → WebSite
 ```
 Firmware/
 ├── platformio.ini          # ambiente, placa e dependências
-├── src/
-│   ├── main.cpp            # setup/loop chamando a Maquete
-│   └── Maquete/
-│       ├── Maquete.hpp     # declaração da classe orquestradora
-│       └── Maquete.cpp     # leitura, regras, serial, display e publishes
-└── Hardware/
-    ├── Leds/               # LED alto brilho (liga/desliga)
-    ├── Buzzers/            # buzzer ativo (tom de alarme)
-    ├── Servos/             # micro servo SG90 (porta)
-    ├── MQ2/                # gás/fumaça (analógico + digital)
-    ├── DHT11/              # temperatura e umidade
-    ├── MHSR602/            # presença (PIR)
-    ├── KY003/              # sensor Hall (portão)
-    ├── MC38/               # sensor magnético de porta/portão (NO/NC)
-    ├── LDR/                # luminosidade
-    ├── Cooler/             # mini cooler 5V (exaustor)
-    ├── Nema17/             # motor de passo (portão, não-bloqueante)
-    └── Display/            # LCD OLED 128x64 (SSD1306, I2C)
+└── src/
+    ├── main.cpp            # setup/loop chamando a Maquete
+    ├── Maquete/
+    │   ├── Maquete.hpp     # declaração da classe orquestradora
+    │   └── Maquete.cpp     # leitura, regras, serial, display e publishes
+    └── Hardware/
+        ├── Leds/               # LED alto brilho (liga/desliga)
+        ├── Buzzers/            # buzzer ativo (tom de alarme)
+        ├── Servos/             # micro servo SG90 (porta)
+        ├── MQ2/                # gás/fumaça (analógico + digital)
+        ├── DHT11/              # temperatura e umidade
+        ├── MHSR602/            # presença (PIR)
+        ├── KY003/              # sensor Hall (portão)
+        ├── MC38/               # sensor magnético de porta/portão (NO/NC)
+        ├── LDR/                # luminosidade
+        ├── Cooler/             # mini cooler 5V (exaustor)
+        ├── Nema17/             # motor de passo (portão, não-bloqueante)
+        └── Display/            # LCD OLED 128x64 (SSD1306, I2C)
 ```
 
 ## Mapa de pinos
@@ -112,8 +112,9 @@ Dependências (`platformio.ini`):
 - **DHT11**: cada sensor (sala e quarto) é lido alternadamente, um por ciclo de 2s — mantém o
   intervalo mínimo de 1s exigido pelo sensor e reduz o bloqueio do loop pela metade.
 - **Watchdog (WDT)**: habilitado com timeout de 8s. Se o loop travar, a placa reinicia sozinha.
-- **MC38 (NO/NC)**: o construtor aceita `activeHigh`. Com `INPUT_PULLUP` + contato NC,
-  use `MC38Class(pin, false)` para `HIGH` = porta aberta (padrão é `true`).
+- **MC38 (NO/NC)**: o construtor aceita `activeHigh` (padrão `true`). Com a configuração padrão
+  (contato NO + `INPUT_PULLUP`), `HIGH` = porta aberta; se a física estiver invertida (NC), use
+  `MC38Class(pin, false)`, que passa a interpretar `LOW` como porta aberta.
 - O servo inicia em 0° no boot.
 - **Debounce de contatos**: os sensores MC38 (porta/portão) e KY-003 (Hall) são amostrados a cada
   iteração do loop (`UpdateFastSensors`) e estabilizados com debounce de 40ms — evita toggles

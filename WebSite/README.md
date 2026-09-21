@@ -20,8 +20,8 @@ Recursos além do controle em tempo real:
 - **Maquete 3D** (Three.js, via CDN): casa 3D interativa com dois andares e telhado; arrastar
   gira/zoom; clicar num cômodo liga/desliga a luz e os indicadores refletem sensores (luz,
   movimento, fumaça, porta, portão).
-- **Resumo de hoje**: agregados do dia (mín/máx/atual de temperatura/umidade, fumaça máx, nº de
-  alertas e comandos).
+- **Resumo de hoje**: linhas com os agregados do dia por grupo — temperatura (média "agora", máx
+  e mín) e umidade (máx), além da fumaça máx da cozinha e dos contadores de alertas e comandos.
 - **Clima externo**: temperatura/umidade/vento e condição do tempo via Open-Meteo (sem
   dependência externa), com cache de 10 minutos.
 - **Exportar CSV**: download de eventos e de leituras por tópico em formato compatível com
@@ -76,8 +76,8 @@ WebSite/
   publicados em sequência com 150ms de intervalo.
 - **Agendamentos**: form para agendar um comando num horário (HH:MM) recorrente; lista com
   liga/desliga e excluir. Persistidos no SQLite.
-- **Resumo de hoje**: chips com mínimo/máximo/média das leituras do dia e contadores de alertas
-  e comandos.
+- **Resumo de hoje**: linhas com os agregados do dia (temperatura: *agora/máx/mín*; umidade:
+  *máx*) de sala e quarto, fumaça máx da cozinha e contadores de alertas e comandos.
 - **Modo férias** (no header): simula ocupação da casa ligando/apagando luzes em padrão
   determinístico (tópicos `principal/ferias`).
 - **Painel de testes (simulador)**: botões que forçam eventos via tópicos `test/*/command` —
@@ -257,8 +257,9 @@ Lista os agendamentos:
   "topic": "maquete_inteligente/sala/led/command", "value": false }
 ```
 
-Validações: `label` obrigatório, `time` em `HH:MM`, `topic` em `.../command` dentro do root e
-`value` booleano. Resposta: `{"ok": true, "id": N}`.
+Validações: `label` obrigatório, `time` em `HH:MM`, `topic` entre os comandos conhecidos
+(luzes, exaustor, porta, portão, alarme e férias) e `value` booleano. Resposta:
+`{"ok": true, "id": N}`.
 
 ### `PATCH /api/schedules/<id>` · `DELETE /api/schedules/<id>`
 
