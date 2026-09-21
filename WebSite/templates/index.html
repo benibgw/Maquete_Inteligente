@@ -201,7 +201,15 @@
         <h2>Maquete 3D</h2>
         <span class="floorplan-hint">Arraste para girar · role p/ zoom · clique num cômodo p/ ligar/desligar a luz</span>
       </div>
-      <div id="model-3d" class="model-3d" role="img" aria-label="Maquete 3D da casa"></div>
+      <div id="model-3d" class="model-3d" role="img" aria-label="Maquete 3D da casa">
+        <button type="button" id="model-reset" class="model-reset" title="Voltar à vista inicial (rotação automática)">
+          <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+            <path d="M21 3v6h-6"/>
+          </svg>
+          <span>Resetar vista</span>
+        </button>
+      </div>
       <div class="fp-legend" aria-hidden="true">
         <span class="fp-legend-item"><span class="swatch swatch-light"></span>Luz</span>
         <span class="fp-legend-item"><span class="swatch swatch-motion"></span>Movimento</span>

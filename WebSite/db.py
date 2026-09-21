@@ -318,6 +318,11 @@ def get_daily_summary():
             }
         for kind, topic, count in event_rows:
             result["events"][f"{kind}:{topic}"] = count
+            if kind == "state" and (
+                topic.endswith("/alarme/triggered") or "/fumaca/state" in topic
+            ):
+                alert_key = f"alert:{topic}"
+                result["events"][alert_key] = result["events"].get(alert_key, 0) + count
     except sqlite3.Error as error:
         print(f"Erro ao gerar resumo diário: {error}")
     return result

@@ -1240,6 +1240,36 @@ footer a:hover {
   border-radius: inherit;
 }
 
+.model-reset {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(203, 166, 247, 0.4);
+  background: rgba(17, 17, 27, 0.85);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.model-reset .icon-svg {
+  width: 14px;
+  height: 14px;
+}
+
+.model-reset:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
 .model-tip {
   position: absolute;
   z-index: 5;

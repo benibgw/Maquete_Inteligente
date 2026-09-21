@@ -67,7 +67,10 @@ WebSite/
   As lâmpadas (esferas no teto) e o portão (bloco) ficam nos cômodos; os sensores (movimento,
   fumaça e porta) ficam empilhados num canto de cada cômodo, um sobre o outro, com as cores
   refletindo o estado. Um telhado de duas águas (prisma triangular com base retangular e beiral)
-  encerra o modelo. Fica logo abaixo do card Iluminação.
+  encerra o modelo; a garagem tem um telhado de duas águas no mesmo estilo, porém mais baixo.
+  A câmera gira automaticamente ao redor da casa; ao interagir, a rotação
+  automática pausa e, após **30s** sem interação, volta sozinha à vista inicial. O botão
+  **Resetar vista** (canto superior direito) faz o mesmo na hora. Fica logo abaixo do card Iluminação.
 - **Cenas**: botões *Sair de casa* (apaga todas as luzes, desliga exaustor, fecha porta/portão e
   arma o alarme) e *Chegar em casa* (desarma, abre o portão e acende a sala). Os comandos são
   publicados em sequência com 150ms de intervalo.

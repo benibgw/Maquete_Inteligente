@@ -439,7 +439,10 @@ async function loadHistory() {
 function startStream() {
   if (!("EventSource" in window)) {
     refresh();
-    setInterval(refresh, POLL_MS);
+    setInterval(() => {
+      refresh();
+      loadSummary();
+    }, POLL_MS);
     return;
   }
 
@@ -471,6 +474,7 @@ function startStream() {
     const data = JSON.parse(event.data);
     currentState[data.topic] = data.value;
     render({ state: currentState, online: liveOnline });
+    scheduleSummaryRefresh();
   };
 }
 
@@ -1092,6 +1096,13 @@ async function loadSummary() {
   }
 }
 
+let summaryRefreshTimer = null;
+
+function scheduleSummaryRefresh() {
+  clearTimeout(summaryRefreshTimer);
+  summaryRefreshTimer = setTimeout(loadSummary, 2000);
+}
+
 /* ---------- Clima externo ---------- */
 
 async function loadWeather() {
@@ -1128,7 +1139,7 @@ const MODEL_WALL_H = 1.5;
 const MODEL_GAP = 30 * HOUSE_SCALE;
 const MODEL_UP_H = 1.2;
 const MODEL_UP_Y = MODEL_WALL_H + MODEL_GAP;
-const MODEL_PATIO_H = 0.5;
+const MODEL_PATIO_H = 0.55;
 const MODEL_OFF = 0x45475a;
 const MODEL_LIGHT = 0xffd166;
 const MODEL_WARN = 0xf9e2af;
@@ -1184,6 +1195,31 @@ function init3D() {
   const camera = new THREE.PerspectiveCamera(45, el.clientWidth / el.clientHeight, 0.1, 200);
   camera.position.set(11, 12.4, 9.64);
 
+  const CAMERA_HOME = new THREE.Vector3(11, 12.4, 9.64);
+  const CAMERA_TARGET_HOME = new THREE.Vector3(0, 2.4, -3.36);
+  const AUTO_RESET_MS = 30000;
+  let idleTimer = null;
+
+  function clearIdleTimer() {
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+      idleTimer = null;
+    }
+  }
+
+  function scheduleIdleReset() {
+    clearIdleTimer();
+    idleTimer = setTimeout(resetCamera, AUTO_RESET_MS);
+  }
+
+  function resetCamera() {
+    clearIdleTimer();
+    camera.position.copy(CAMERA_HOME);
+    controls.target.copy(CAMERA_TARGET_HOME);
+    controls.autoRotate = true;
+    controls.update();
+  }
+
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 2.4, -3.36);
   controls.enableDamping = true;
@@ -1195,6 +1231,10 @@ function init3D() {
   controls.autoRotateSpeed = 1.2;
   controls.addEventListener("start", () => {
     controls.autoRotate = false;
+    clearIdleTimer();
+  });
+  controls.addEventListener("end", () => {
+    scheduleIdleReset();
   });
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.65));
@@ -1291,13 +1331,6 @@ function init3D() {
     roomData[s.room][s.key] = addMarker3D(s.room, s.corner[0], s.corner[1], "sphere", 0.55, s.height);
   });
 
-  const slab = new THREE.Mesh(
-    new THREE.BoxGeometry((860 - 40) * HOUSE_SCALE, 0.12, 190 * HOUSE_SCALE),
-    new THREE.MeshLambertMaterial({ color: 0x313244 })
-  );
-  slab.position.set(0, (MODEL_WALL_H + MODEL_UP_Y) / 2, (150 - HOUSE_OFFZ) * HOUSE_SCALE);
-  scene.add(slab);
-
   const roofBase = (870 - 30) * HOUSE_SCALE;
   const roofDepth = (265 - 35) * HOUSE_SCALE;
   const roofH = 1.2;
@@ -1326,6 +1359,35 @@ function init3D() {
   );
   roofEdges.position.copy(roof.position);
   scene.add(roofEdges);
+
+  const gRoofBase = 4.8;
+  const gRoofDepth = 2.9;
+  const gRoofH = 0.5;
+  const gR = gRoofBase / 2;
+  const gD = gRoofDepth / 2;
+  const gRoofGeo = new THREE.BufferGeometry();
+  gRoofGeo.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute([
+      -gR, 0, -gD,  gR, 0, -gD,  gR, 0, gD,  -gR, 0, gD,
+      -gR, gRoofH, 0,  gR, gRoofH, 0
+    ], 3)
+  );
+  gRoofGeo.setIndex([0, 1, 4,  1, 5, 4,  3, 2, 5,  3, 5, 4,  3, 0, 4,  1, 2, 5]);
+  gRoofGeo.computeVertexNormals();
+  const garageRoof = new THREE.Mesh(
+    gRoofGeo,
+    new THREE.MeshLambertMaterial({ color: 0x6c7086, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide })
+  );
+  garageRoof.position.set(-3.5, MODEL_WALL_H + 0.05, -1.68);
+  scene.add(garageRoof);
+
+  const garageRoofEdges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(gRoofGeo),
+    new THREE.LineBasicMaterial({ color: 0x45475a, transparent: true, opacity: 0.9 })
+  );
+  garageRoofEdges.position.copy(garageRoof.position);
+  scene.add(garageRoofEdges);
 
   const raycaster = new THREE.Raycaster();
   const pointerDir = new THREE.Vector2();
@@ -1415,7 +1477,12 @@ function init3D() {
     window.addEventListener("resize", onResize);
   }
 
-  _r3d = { roomData };
+  const resetBtn = document.getElementById("model-reset");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => resetCamera());
+  }
+
+  _r3d = { roomData, resetCamera };
   update3D();
 }
 
@@ -1463,6 +1530,6 @@ setInterval(loadEvents, 5000);
 loadHistory();
 setInterval(loadHistory, 30000);
 loadSummary();
-setInterval(loadSummary, 60000);
+setInterval(loadSummary, 30000);
 loadWeather();
 setInterval(loadWeather, 600000);
