@@ -348,6 +348,12 @@ def api_history():
     return jsonify({"ok": True, "topic": topic, "points": points})
 
 
+@app.route("/api/topics")
+@login_required
+def api_topics():
+    return jsonify({"ok": True, "topics": db.list_numeric_topics()})
+
+
 @app.route("/api/events")
 @login_required
 def api_events():

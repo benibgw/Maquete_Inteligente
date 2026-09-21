@@ -1205,6 +1205,58 @@ footer a:hover {
   margin: 0;
 }
 
+.chart-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chart-tools .custom-select {
+  flex: none;
+  width: 250px;
+}
+
+.select-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chart-tools button {
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: var(--accent);
+  color: #11111b;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chart-tools button:disabled,
+.chart-tools .select-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chart-remove {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.chart-remove:hover {
+  color: var(--alert);
+  background: rgba(243, 139, 168, 0.12);
+}
+
 .summary-na {
   color: var(--muted);
   font-size: 0.85rem;

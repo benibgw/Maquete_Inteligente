@@ -212,6 +212,17 @@ def get_history(topic, limit=120, since=0.0):
         return []
 
 
+def list_numeric_topics():
+    try:
+        conn = get_conn()
+        with _lock:
+            rows = conn.execute("SELECT DISTINCT topic FROM readings ORDER BY topic").fetchall()
+        return [row[0] for row in rows]
+    except sqlite3.Error as error:
+        print(f"Erro ao listar tópicos: {error}")
+        return []
+
+
 def add_schedule(label, time_str, topic, value):
     try:
         conn = get_conn()

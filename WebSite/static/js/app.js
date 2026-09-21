@@ -339,101 +339,392 @@ function timeLabel(ts) {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
+const CUSTOM_TOPICS_KEY = "maquete_custom_topics";
+const CUSTOM_PALETTE = [
+  "#f38ba8",
+  "#89b4fa",
+  "#a6e3a1",
+  "#f9e2af",
+  "#cba6f7",
+  "#94e2d5",
+  "#f5c2e7",
+  "#fab387",
+  "#eba0ac",
+  "#74c7ec",
+];
+
+const COMPONENT_LABELS = {
+  temperature: "Temperatura",
+  humidity: "Umidade",
+  luminosity: "Luminosidade",
+  percentage: "Percentual",
+  "servo_angle": "Ângulo",
+  position: "Posição",
+};
+
+function topicLabel(topic) {
+  const parts = topic.replace(`${ROOT}/`, "").split("/");
+  const room = ROOM_LABELS[parts[0]] || (parts[0].charAt(0).toUpperCase() + parts[0].slice(1));
+  const comp = parts.length > 1 ? COMPONENT_LABELS[parts[1]] || parts[1] : "";
+  return comp ? `${room} · ${comp}` : room;
+}
+
+function topicSuffix(topic) {
+  if (topic.includes("/temperature")) return " °C";
+  if (
+    topic.includes("/humidity") ||
+    topic.includes("/percentage") ||
+    topic.includes("/luminosity")
+  ) {
+    return " %";
+  }
+  return "";
+}
+
+let allNumericTopics = [];
+let customCharts = {};
+let customSelBox = null;
+let customSelTrigger = null;
+let customSelValue = null;
+let customSelList = null;
+let customTopicValue = "";
+let closeCustomTopicList = null;
+
+function createLineChart(canvas, datasets) {
+  return new Chart(canvas, {
+    type: "line",
+    data: { datasets },
+    options: {
+      responsive: true,
+      animation: false,
+      parsing: { xAxisKey: "x", yAxisKey: "y" },
+      scales: {
+        x: {
+          type: "linear",
+          ticks: {
+            color: "#a6adc8",
+            maxTicksLimit: 8,
+            callback: timeLabel,
+          },
+          grid: { color: "rgba(108,112,134,0.15)" },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: "#a6adc8" },
+          grid: { color: "rgba(108,112,134,0.15)" },
+        },
+      },
+      plugins: {
+        legend: { labels: { color: "#cdd6f4", usePointStyle: true, pointStyle: "line" } },
+        tooltip: {
+          callbacks: {
+            title: (items) => (items.length ? timeLabel(items[0].parsed.x) : ""),
+          },
+        },
+      },
+    },
+  });
+}
+
+async function renderHistoryEntry(entry) {
+  const datasets = [];
+  for (const s of entry.group.series) {
+    const response = await fetch(`/api/history?topic=${encodeURIComponent(s.topic)}&limit=120`);
+    if (response.status === 401) {
+      const error = new Error("unauthorized");
+      error.unauthorized = true;
+      throw error;
+    }
+    if (!response.ok) continue;
+    const data = await response.json();
+    if (!data.ok) continue;
+    datasets.push({
+      label: s.label + (s.suffix || ""),
+      data: (data.points || []).map((p) => ({ x: p.ts, y: p.value })),
+      borderColor: s.color,
+      backgroundColor: s.color + "33",
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.3,
+    });
+  }
+
+  if (entry.chart) {
+    entry.chart.data.datasets = datasets;
+    entry.chart.update();
+    return;
+  }
+  if (!datasets.length) return;
+
+  entry.chart = createLineChart(entry.canvas, datasets);
+}
+
+function ensureFixedHistoryCards(grid) {
+  for (const group of HISTORY_GROUPS) {
+    if (historyCharts[group.title]) continue;
+    const box = document.createElement("div");
+    box.className = "history-chart";
+    const header = document.createElement("div");
+    header.className = "history-head";
+    const title = document.createElement("h3");
+    title.textContent = group.title;
+    const csvLink = document.createElement("a");
+    csvLink.className = "csv-link";
+    csvLink.href = `/api/export/readings.csv?topic=${encodeURIComponent(group.series[0].topic)}`;
+    csvLink.download = "";
+    csvLink.textContent = "CSV";
+    const canvas = document.createElement("canvas");
+    header.appendChild(title);
+    header.appendChild(csvLink);
+    box.appendChild(header);
+    box.appendChild(canvas);
+    grid.appendChild(box);
+    historyCharts[group.title] = { group, canvas, chart: null };
+  }
+}
+
 async function loadHistory() {
   const grid = document.getElementById("history-grid");
   if (!grid) return;
 
-  for (const group of HISTORY_GROUPS) {
-    if (!historyCharts[group.title]) {
-      const box = document.createElement("div");
-      box.className = "history-chart";
-      const header = document.createElement("div");
-      header.className = "history-head";
-      const title = document.createElement("h3");
-      title.textContent = group.title;
-      const csvLink = document.createElement("a");
-      csvLink.className = "csv-link";
-      csvLink.href = `/api/export/readings.csv?topic=${encodeURIComponent(group.series[0].topic)}`;
-      csvLink.download = "";
-      csvLink.textContent = "CSV";
-      const canvas = document.createElement("canvas");
-      header.appendChild(title);
-      header.appendChild(csvLink);
-      box.appendChild(header);
-      box.appendChild(canvas);
-      grid.appendChild(box);
-      historyCharts[group.title] = { group, canvas, chart: null };
-    }
-  }
+  ensureFixedHistoryCards(grid);
 
-  for (const entry of Object.values(historyCharts)) {
+  for (const entry of [...Object.values(historyCharts), ...Object.values(customCharts)]) {
     try {
-      const datasets = [];
-      let hasData = false;
-      for (const s of entry.group.series) {
-        const response = await fetch(`/api/history?topic=${encodeURIComponent(s.topic)}&limit=120`);
-        if (response.status === 401) {
-          redirectToLogin();
-          return;
-        }
-        if (!response.ok) continue;
-        const data = await response.json();
-        if (data.ok && data.points.length) hasData = true;
-        datasets.push({
-          label: s.label + (s.suffix || ""),
-          data: (data.points || []).map((p) => ({ x: p.ts, y: p.value })),
-          borderColor: s.color,
-          backgroundColor: s.color + "33",
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.3,
-        });
-      }
-
-      if (entry.chart) {
-        entry.chart.data.datasets = datasets;
-        entry.chart.update();
-        continue;
-      }
-      if (!datasets.length) continue;
-
-      entry.chart = new Chart(entry.canvas, {
-        type: "line",
-        data: { datasets },
-        options: {
-          responsive: true,
-          animation: false,
-          parsing: { xAxisKey: "x", yAxisKey: "y" },
-          scales: {
-            x: {
-              type: "linear",
-              ticks: {
-                color: "#a6adc8",
-                maxTicksLimit: 8,
-                callback: timeLabel,
-              },
-              grid: { color: "rgba(108,112,134,0.15)" },
-            },
-            y: {
-              beginAtZero: true,
-              ticks: { color: "#a6adc8" },
-              grid: { color: "rgba(108,112,134,0.15)" },
-            },
-          },
-          plugins: {
-            legend: { labels: { color: "#cdd6f4", usePointStyle: true, pointStyle: "line" } },
-            tooltip: {
-              callbacks: {
-                title: (items) => (items.length ? timeLabel(items[0].parsed.x) : ""),
-              },
-            },
-          },
-        },
-      });
+      await renderHistoryEntry(entry);
     } catch (error) {
+      if (error && error.unauthorized) {
+        redirectToLogin();
+        return;
+      }
       console.error("Falha ao carregar histórico", error);
     }
   }
+}
+
+function saveCustomTopics() {
+  try {
+    localStorage.setItem(CUSTOM_TOPICS_KEY, JSON.stringify(Object.keys(customCharts)));
+  } catch (error) {
+    // storage indisponível
+  }
+}
+
+function loadCustomTopics() {
+  try {
+    return JSON.parse(localStorage.getItem(CUSTOM_TOPICS_KEY) || "[]");
+  } catch (error) {
+    return [];
+  }
+}
+
+function addCustomChart(topic, persist = true) {
+  if (!topic || customCharts[topic]) return;
+
+  const box = document.createElement("div");
+  box.className = "history-chart";
+  const header = document.createElement("div");
+  header.className = "history-head";
+  const title = document.createElement("h3");
+  title.textContent = topicLabel(topic);
+  const csvLink = document.createElement("a");
+  csvLink.className = "csv-link";
+  csvLink.href = `/api/export/readings.csv?topic=${encodeURIComponent(topic)}`;
+  csvLink.download = "";
+  csvLink.textContent = "CSV";
+  const remove = document.createElement("button");
+  remove.className = "chart-remove";
+  remove.type = "button";
+  remove.setAttribute("aria-label", `Remover gráfico de ${topicLabel(topic)}`);
+  remove.textContent = "×";
+  remove.addEventListener("click", () => removeCustomChart(topic));
+  const canvas = document.createElement("canvas");
+
+  header.appendChild(title);
+  header.appendChild(csvLink);
+  header.appendChild(remove);
+  box.appendChild(header);
+  box.appendChild(canvas);
+
+  const paletteIndex = Object.keys(customCharts).length % CUSTOM_PALETTE.length;
+  customCharts[topic] = {
+    topic,
+    group: {
+      title: topicLabel(topic),
+      series: [
+        {
+          topic,
+          label: topicLabel(topic),
+          color: CUSTOM_PALETTE[paletteIndex],
+          suffix: topicSuffix(topic),
+        },
+      ],
+    },
+    canvas,
+    chart: null,
+  };
+
+  const grid = document.getElementById("history-grid");
+  if (grid) grid.appendChild(box);
+
+  if (persist) saveCustomTopics();
+
+  renderHistoryEntry(customCharts[topic]).catch((error) => {
+    if (error && error.unauthorized) redirectToLogin();
+  });
+}
+
+function removeCustomChart(topic) {
+  const entry = customCharts[topic];
+  if (!entry) return;
+  if (entry.chart) {
+    try {
+      entry.chart.destroy();
+    } catch (error) {
+      // chart já destruído
+    }
+  }
+  const parent = entry.canvas.parentElement;
+  if (parent) parent.remove();
+  delete customCharts[topic];
+  saveCustomTopics();
+  refreshTopicSelect();
+}
+
+function refreshTopicSelect() {
+  const add = document.getElementById("custom-topic-add");
+  if (!customSelBox || !customSelList || !customSelTrigger || !customSelValue || !add) return;
+
+  const available = allNumericTopics.filter((topic) => !customCharts[topic]);
+
+  customSelList.innerHTML = "";
+  if (!allNumericTopics.length) {
+    customSelValue.textContent = "Sem tópicos com leituras";
+    customSelTrigger.disabled = true;
+    add.disabled = true;
+    customTopicValue = "";
+    return;
+  }
+  if (!available.length) {
+    customSelValue.textContent = "Todos os tópicos já adicionados";
+    customSelTrigger.disabled = true;
+    add.disabled = true;
+    customTopicValue = "";
+    return;
+  }
+
+  customSelTrigger.disabled = false;
+  const defaultTopic = available.includes(customTopicValue) ? customTopicValue : available[0];
+  for (const topic of available) {
+    const item = document.createElement("li");
+    item.className = "select-option";
+    item.setAttribute("role", "option");
+    item.dataset.value = topic;
+    item.textContent = topicLabel(topic);
+    item.addEventListener("click", () => {
+      setCustomTopic(topic);
+      if (closeCustomTopicList) closeCustomTopicList();
+      customSelTrigger.focus();
+    });
+    customSelList.appendChild(item);
+  }
+  setCustomTopic(defaultTopic);
+}
+
+function setCustomTopic(topic) {
+  customTopicValue = topic || "";
+  if (customSelValue) customSelValue.textContent = customTopicValue ? topicLabel(customTopicValue) : "—";
+  if (customSelList) {
+    customSelList.querySelectorAll(".select-option").forEach((option) => {
+      option.classList.toggle("selected", option.dataset.value === customTopicValue);
+    });
+  }
+  const add = document.getElementById("custom-topic-add");
+  if (add) add.disabled = !customTopicValue;
+}
+
+function buildCustomTopicSelect() {
+  const box = document.getElementById("custom-topic-select");
+  if (!box) return false;
+
+  const trigger = box.querySelector(".select-trigger");
+  const valueEl = box.querySelector(".select-value");
+  const list = box.querySelector(".select-list");
+  if (!trigger || !valueEl || !list) return false;
+
+  customSelBox = box;
+  customSelTrigger = trigger;
+  customSelValue = valueEl;
+  customSelList = list;
+
+  function openList() {
+    if (trigger.disabled) return;
+    list.hidden = false;
+    box.classList.add("open");
+    const card = box.closest(".card");
+    if (card) card.classList.add("card-open");
+    trigger.setAttribute("aria-expanded", "true");
+  }
+
+  function closeList() {
+    list.hidden = true;
+    box.classList.remove("open");
+    const card = box.closest(".card");
+    if (card) card.classList.remove("card-open");
+    trigger.setAttribute("aria-expanded", "false");
+  }
+
+  closeCustomTopicList = closeList;
+
+  trigger.addEventListener("click", () => {
+    if (list.hidden) openList();
+    else closeList();
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!box.contains(event.target)) closeList();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeList();
+  });
+
+  return true;
+}
+
+async function loadTopics() {
+  if (!customSelBox) return;
+  try {
+    const response = await fetch("/api/topics");
+    if (response.status === 401) {
+      redirectToLogin();
+      return;
+    }
+    if (!response.ok) return;
+    const data = await response.json();
+    if (!data.ok) return;
+    allNumericTopics = data.topics || [];
+    refreshTopicSelect();
+  } catch (error) {
+    // mantém lista vazia
+  }
+}
+
+function setupCustomCharts() {
+  const add = document.getElementById("custom-topic-add");
+  if (!buildCustomTopicSelect() || !add) return;
+
+  for (const topic of loadCustomTopics()) {
+    if (topic && !customCharts[topic]) addCustomChart(topic, false);
+  }
+  refreshTopicSelect();
+
+  add.addEventListener("click", () => {
+    if (!customTopicValue) return;
+    if (closeCustomTopicList) closeCustomTopicList();
+    addCustomChart(customTopicValue);
+    refreshTopicSelect();
+  });
 }
 
 function startStream() {
@@ -633,6 +924,7 @@ const ROOM_LABELS = {
   cozinha: "Cozinha",
   escritorio: "Escritório",
   garagem: "Garagem",
+  patio: "Pátio",
 };
 
 function eventDescriptor(ev) {
@@ -1529,6 +1821,8 @@ loadEvents();
 setInterval(loadEvents, 5000);
 loadHistory();
 setInterval(loadHistory, 30000);
+setupCustomCharts();
+loadTopics();
 loadSummary();
 setInterval(loadSummary, 30000);
 loadWeather();

@@ -247,6 +247,16 @@
           <path d="m19 9-5 5-4-4-3 3"/>
         </svg>
         <h2>Histórico</h2>
+        <div class="chart-tools head-end">
+          <div class="custom-select" id="custom-topic-select" role="listbox" aria-label="Tópico para gráfico">
+            <button type="button" class="select-trigger" aria-haspopup="listbox" aria-expanded="false" disabled>
+              <span class="select-value">—</span>
+              <span class="select-arrow">▾</span>
+            </button>
+            <ul class="select-list" role="listbox" aria-label="Tópico para gráfico" hidden></ul>
+          </div>
+          <button type="button" id="custom-topic-add" disabled>Adicionar gráfico</button>
+        </div>
       </div>
       <div class="history-grid" id="history-grid"></div>
     </section>

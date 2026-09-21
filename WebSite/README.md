@@ -89,6 +89,11 @@ WebSite/
   comandos enviados), com filtros *Tudo / Alertas / Sensores / Comandos*.
 - **Histórico**: gráficos das leituras de sala/quarto (temperatura, umidade), fumaça da
   cozinha e luminosidade da sala.
+- **Gráficos customizados**: no card de Histórico há um seletor com todos os tópicos
+  numéricos que já receberam leituras (`GET /api/topics`); o usuário pode adicionar quantos
+  gráficos quiser (linha por tópico, com rótulo amigável, unidade quando conhecida, link CSV
+  e botão × para remover). A seleção fica salva no `localStorage`
+  (`maquete_custom_topics`) e é restaurada ao reabrir a página.
 
 ## Autenticação
 
@@ -176,6 +181,18 @@ Série temporal de um tópico numérico (temperatura, umidade, fumaça, luminosi
 | `topic` | — | Tópico completo (deve estar no root `maquete_inteligente/`) |
 | `limit` | `120` | Quantidade de pontos (máx. 2000) |
 | `since` | `0` | Timestamp (epoch s) mínimo de corte |
+
+### `GET /api/topics`
+
+Lista os tópicos numéricos que já gravaram leituras (`SELECT DISTINCT topic FROM readings`),
+usado pelo seletor de gráficos customizados:
+
+```json
+{
+  "ok": true,
+  "topics": ["maquete_inteligente/sala/dht11/temperature", "..."]
+}
+```
 
 ### `GET /api/events`
 
@@ -364,7 +381,7 @@ ambiente com o mesmo nome (ex.: `MQTT_BROKER`, `WEB_HOST`):
 - A página fica com opacidade reduzida quando o sistema está offline.
 - Autenticação: decorator `login_required` protege `/`, `/api/state`, `/api/history`,
   `/api/events`, `/api/stream`, `/api/command`, `/api/scene`, `/api/schedules*`,
-  `/api/summary`, `/api/export/*` e `/api/weather`; `/login`, `/logout` e `/api/health`
+  `/api/summary`, `/api/topics`, `/api/export/*` e `/api/weather`; `/login`, `/logout` e `/api/health`
   são públicas.
 
 ## Observações
